@@ -2,6 +2,9 @@
 #include <thread>
 #include "GLFWRenderer.h"
 
+#include "LazyText.h"
+#include "StaticText.h"
+
 using namespace std;
 
 GLFWRenderer::GLFWRenderer(int w, int h) : width { w }, height { h }
@@ -68,21 +71,21 @@ void GLFWRenderer::run()
 	{
 		glfwMakeContextCurrent(window);
 
-		wstring text = L"Lorem ipsum dolor sit amet, ...";
-		int size = 48;
+		wstring text = L"Zażółć gęślą jaźń";
+		int size = 72;
 
-		StaticText t1("Lora/Lora-Regular", size);
+		LazyText t1("Lora/Lora-Regular", size);
 		t1.setText(text);
 		t1.setColor(1, 0.5, 0);
 		// t1.setSpacing(-5);
 
-		StaticText t2("NoticiaText/NoticiaText-Regular", size);
+		LazyText t2("NoticiaText/NoticiaText-Regular", size);
 		t2.setText(text);
 		t2.setColor(0, 1, 0);
 		t2.setOpacity(50);
 		// t2.setSpacing(-5);
 
-		StaticText t3("KaushanScript/KaushanScript-Regular", size);
+		LazyText t3("KaushanScript/KaushanScript-Regular", size);
 		t3.setText(text);
 		t3.setColor(1, 0.5, 1);
 		t3.setOpacity(70);
@@ -110,15 +113,15 @@ void GLFWRenderer::run()
 			// t2.setOpacity((sin(glfwGetTime() * 4 + 1.0) + 4) * 20.0f);
 			// t3.setOpacity((sin(glfwGetTime() * 4 + 2.0) + 4) * 20.0f);
 
-			// static int frame_no = 1;
-			// t1.setText(to_wstring(frame_no));
-			// t2.setText(to_wstring(frame_no));
-			// t3.setText(to_wstring(frame_no));
-			// frame_no++;
+			static int frame_no = 1;
+			t1.setText(to_wstring(frame_no));
+			t2.setText(to_wstring(frame_no));
+			t3.setText(to_wstring(frame_no));
+			frame_no++;
 
 			t1.drawText(40, 50);
-			t2.drawText(50, 100);
-			t3.drawText(60, 150);
+			t2.drawText(50, 50 + size);
+			t3.drawText(60, 50 + size * 2);
 
 			glfwSwapBuffers(window);
 			sleepUntilNextFrame();

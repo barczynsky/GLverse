@@ -26,5 +26,5 @@ public:
 
 	FT_Pos getFontHeight();
 	FT_Vector getFontKerning(wchar_t prev, wchar_t next);
-	
+
 };
