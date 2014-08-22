@@ -20,6 +20,6 @@ private:
 public:
 	static FontRepository& instance();
 
-	TrueTypeFont& getFont(std::string font_name, int size);
+	std::shared_ptr<TrueTypeFont> getFont(std::string font_name, int size);
 
 };

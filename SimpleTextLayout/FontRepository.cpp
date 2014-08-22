@@ -15,13 +15,13 @@ FontRepository& FontRepository::instance()
 	return *font_repository_instance;
 }
 
-TrueTypeFont& FontRepository::getFont(string font_name, int size)
+shared_ptr<TrueTypeFont> FontRepository::getFont(string font_name, int size)
 {
 	if (fonts.count(font_name))
 	{
 		if (fonts[font_name].count(size))
 		{
-			return *fonts[font_name][size];
+			return fonts[font_name][size];
 		}
 	}
 
@@ -31,11 +31,11 @@ TrueTypeFont& FontRepository::getFont(string font_name, int size)
 	{
 		if(FT_New_Face(ft, (font_path + ".ttc").c_str(), 0, &face))
 		{
-			printf("%s(.ttf|.ttc) font not found!\n", font_path.c_str());
+			fprintf(stderr, "%s(.ttf|.ttc) font not found!\n", font_path.c_str());
 			throw;
 		}
 	}
 	FT_Set_Pixel_Sizes(face, 0, size);
 	fonts[font_name][size] = make_shared<TrueTypeFont>(face);
-	return *fonts[font_name][size];
+	return fonts[font_name][size];
 }

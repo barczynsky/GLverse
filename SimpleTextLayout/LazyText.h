@@ -3,7 +3,7 @@
 
 #include "BaseText.h"
 
-class LazyText : public BaseText<std::wstring>
+class LazyText : public BaseText<std::string>
 {
 private:
 	bool text_changed{ false };

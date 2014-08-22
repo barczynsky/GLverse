@@ -10,14 +10,16 @@ LazyText::LazyText(string font_name, int font_size, StringType stext)
 
 void LazyText::setText(StringType stext)
 {
+	if (getText() != stext)
+		text_changed = true;
 	BaseText::setText(stext);
-	text_changed = true;
 }
 
 void LazyText::setSpacing(float sp)
 {
+	if (getSpacing() != sp)
+		text_changed = true;
 	BaseText::setSpacing(sp);
-	text_changed = true;
 }
 
 void LazyText::drawText(int x, int y)

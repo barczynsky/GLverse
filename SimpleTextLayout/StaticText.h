@@ -3,7 +3,7 @@
 
 #include "BaseText.h"
 
-class StaticText : public BaseText<std::wstring>
+class StaticText : public BaseText<std::string>
 {
 private:
 	FT_Pos text_max_width{ 0 };
