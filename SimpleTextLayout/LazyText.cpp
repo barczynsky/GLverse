@@ -2,17 +2,24 @@
 
 using namespace std;
 
-LazyText::LazyText(string font_name, int font_size, StringType stext)
+LazyText::LazyText(string font_name, int font_size, StringType text)
 : BaseText(font_name, font_size)
 {
-	setText(std::move(stext));
+	setText(std::move(text));
 }
 
-void LazyText::setText(StringType stext)
+void LazyText::setText(StringType new_text)
 {
-	if (getText() != stext)
+	if (getText() != new_text)
 		text_changed = true;
-	BaseText::setText(stext);
+	BaseText::setText(new_text);
+}
+
+void LazyText::setSize(int new_size)
+{
+	if (getSize() != new_size)
+		text_changed = true;
+	BaseText::setSize(new_size);
 }
 
 void LazyText::setSpacing(float sp)

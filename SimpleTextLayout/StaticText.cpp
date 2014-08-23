@@ -2,22 +2,28 @@
 
 using namespace std;
 
-StaticText::StaticText(string font_name, int font_size, StringType stext)
+StaticText::StaticText(string font_name, int font_size, StringType text)
 : BaseText(font_name, font_size)
 {
-	setText(std::move(stext));
+	setText(std::move(text));
 }
 
-void StaticText::setText(StringType stext)
+void StaticText::setText(StringType new_text)
 {
-	BaseText::setText(stext);
+	BaseText::setText(new_text);
 	makeText();
 }
 
-void StaticText::setText(StringType stext, int max_width)
+void StaticText::setText(StringType new_text, int max_width)
 {
 	setMaxWidth(max_width);
-	setText(stext);
+	setText(new_text);
+}
+
+void StaticText::setSize(int new_size)
+{
+	BaseText::setSize(new_size);
+	makeText();
 }
 
 void StaticText::setSpacing(float sp)

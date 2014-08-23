@@ -10,11 +10,12 @@ private:
 
 public:
 	// StaticText(){}
-	StaticText(std::string font_name, int font_size, StringType stext = StringType());
+	StaticText(std::string font_name, int font_size, StringType text = StringType());
 
 public:
-	void setText(StringType s);
-	void setText(StringType s, int max_width);
+	void setText(StringType new_text);
+	void setText(StringType new_text, int max_width);
+	void setSize(int new_size);
 	void setSpacing(float sp = 0.0f);
 	void setMaxWidth(int max_width = 0);
 

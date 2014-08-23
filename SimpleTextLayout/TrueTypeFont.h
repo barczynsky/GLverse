@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <string>
 #include <unordered_map>
 
 #include <GLFW/glfw3.h>
@@ -13,13 +14,17 @@ class TrueTypeFont
 private:
 	FT_Face font_face;
 	std::unique_ptr<FT_SizeRec> font_size;
+	
+	std::string font_name;
 
 private:
 	std::unordered_map<wchar_t, TrueTypeGlyph> glyphs;
 
 public:
 	// TrueTypeFont(){}
-	TrueTypeFont(FT_Face face);
+	TrueTypeFont(FT_Face face, std::string name);
+
+	std::string getFontName();
 
 	TrueTypeGlyph getGlyphSlot(wchar_t c);
 	GLuint getGlyphTexture(wchar_t c);

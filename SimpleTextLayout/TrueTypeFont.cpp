@@ -4,11 +4,12 @@
 
 using namespace std;
 
-TrueTypeFont::TrueTypeFont(FT_Face face)
+TrueTypeFont::TrueTypeFont(FT_Face face, string name)
 {
 	font_face = face;
 	font_size = make_unique<FT_SizeRec>();
 	font_size->metrics = face->size->metrics;
+	font_name = name;
 }
 
 shared_ptr<FT_GlyphSlotRec> TrueTypeFont::getGlyphSlot(wchar_t c)
@@ -59,6 +60,11 @@ shared_ptr<FT_GlyphSlotRec> TrueTypeFont::getGlyphSlot(wchar_t c)
 GLuint TrueTypeFont::getGlyphTexture(wchar_t c)
 {
 	return (GLuint)getGlyphSlot(c)->generic.data;
+}
+
+string TrueTypeFont::getFontName()
+{
+	return font_name;
 }
 
 FT_Pos TrueTypeFont::getFontHeight()

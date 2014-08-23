@@ -36,6 +36,6 @@ shared_ptr<TrueTypeFont> FontRepository::getFont(string font_name, int size)
 		}
 	}
 	FT_Set_Pixel_Sizes(face, 0, size);
-	fonts[font_name][size] = make_shared<TrueTypeFont>(face);
+	fonts[font_name][size] = make_shared<TrueTypeFont>(face, font_name);
 	return fonts[font_name][size];
 }

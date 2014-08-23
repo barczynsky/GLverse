@@ -86,6 +86,11 @@ public:
 		text = std::move(new_text);
 	}
 
+	virtual void setSize(int new_size)
+	{
+		font = std::move(FontRepository::instance().getFont(font->getFontName(), new_size));
+	}
+
 	virtual void setSpacing(float sp = 0.0f)
 	{
 		text_spacing = static_cast<FT_Pos>(std::floor(sp * 64.0));
@@ -234,6 +239,7 @@ public:
 	void drawOrigin(int x, int y)
 	{
 		int len = text_width >> 6;
+		y += text_size >> 14;
 
 		glColor3f(1.0f, 0.0f, 0.0f);
 		glLineWidth(1);

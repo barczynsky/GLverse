@@ -76,19 +76,20 @@ void GLFWRenderer::run()
 
 		LazyText t1("Lora/Lora-Regular", size);
 		t1.setText(text);
-		t1.setColor(1, 0.5, 0);
+		// t1.setColor(1, 0.5, 0);
+		// t1.setOpacity(90);
 		// t1.setSpacing(2);
 
 		LazyText t2("NoticiaText/NoticiaText-Regular", size);
 		t2.setText(text);
-		t2.setColor(0.5, 1, 1);
-		t2.setOpacity(60);
+		// t2.setColor(0.5, 1, 1);
+		// t2.setOpacity(60);
 		// t2.setSpacing(2);
 
 		LazyText t3("KaushanScript/KaushanScript-Regular", size);
 		t3.setText(text);
-		t3.setColor(1, 0.5, 0.5);
-		t3.setOpacity(80);
+		// t3.setColor(1, 0.5, 0.5);
+		// t3.setOpacity(80);
 		// t3.setSpacing(2);
 
 		while (!glfwWindowShouldClose(window))
@@ -121,8 +122,13 @@ void GLFWRenderer::run()
 			// frame_no++;
 
 			t1.drawAll(40, 50 + size);
-			t2.drawAll(50, 50 + size * 2);
-			t3.drawAll(60, 50 + size * 3);
+			t2.drawAll(50, 70 + size * 2);
+			t3.drawAll(60, 90 + size * 3);
+
+			// t1.setSize(size);
+			// t2.setSize(size);
+			// t3.setSize(size);
+			// size++;
 
 			glfwSwapBuffers(window);
 			sleepUntilNextFrame();
