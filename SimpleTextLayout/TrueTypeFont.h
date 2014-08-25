@@ -6,7 +6,18 @@
 #include <GLFW/glfw3.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+// #include FT_LCD_FILTER_H
+// #define TARGET_LCD
 
+struct GlyphSlotRecEx
+{
+	struct GLTexture {
+		GLuint tex_id{ 0 };
+		int tex_w{ 0 };
+		int tex_h{ 0 };
+	} texture;
+};
+typedef std::shared_ptr<GlyphSlotRecEx> TrueTypeGlyphEx;
 typedef std::shared_ptr<FT_GlyphSlotRec> TrueTypeGlyph;
 
 class TrueTypeFont
@@ -19,16 +30,17 @@ private:
 
 private:
 	std::unordered_map<wchar_t, TrueTypeGlyph> glyphs;
+	std::unordered_map<wchar_t, TrueTypeGlyphEx> glyphs_ex;
 
 public:
 	// TrueTypeFont(){}
 	TrueTypeFont(FT_Face face, std::string name);
 
-	std::string getFontName();
-
 	TrueTypeGlyph getGlyphSlot(wchar_t c);
+	TrueTypeGlyphEx getGlyphSlotEx(wchar_t c);
 	GLuint getGlyphTexture(wchar_t c);
 
+	std::string getFontName();
 	FT_Pos getFontHeight();
 	FT_Vector getFontKerning(wchar_t prev, wchar_t next);
 

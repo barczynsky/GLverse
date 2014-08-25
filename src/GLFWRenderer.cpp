@@ -10,7 +10,7 @@ using namespace std;
 GLFWRenderer::GLFWRenderer(int w, int h) : width { w }, height { h }
 {
 	glfwInit();
-	glfwWindowHint(GLFW_SAMPLES, 16);
+	glfwWindowHint(GLFW_SAMPLES, 4);
 	window = glfwCreateWindow(w, h, glfwGetVersionString(), nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 	glewInit();
@@ -29,7 +29,7 @@ bool GLFWRenderer::isRunning()
 
 void GLFWRenderer::sleepUntilNextFrame(int frame_count)
 {
-	next_frame += frame_duration(1);
+	next_frame += frame_count * frame_duration(1);
 	this_thread::sleep_until(next_frame);
 }
 
@@ -73,7 +73,6 @@ void GLFWRenderer::run()
 
 		string text = "Lorem ipsum dolor sit amet,";
 		int size = 72;
-
 		LazyText t1("Lora/Lora-Regular", size);
 		t1.setText(text);
 		// t1.setColor(1, 0.5, 0);
@@ -96,8 +95,10 @@ void GLFWRenderer::run()
 		{
 			glfwMakeContextCurrent(window);
 
-			// glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+			// glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+			glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+			// glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
+			// glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			glMatrixMode(GL_PROJECTION);
@@ -131,7 +132,7 @@ void GLFWRenderer::run()
 			// size++;
 
 			glfwSwapBuffers(window);
-			sleepUntilNextFrame();
+			sleepUntilNextFrame(15);
 		}
 	});
 

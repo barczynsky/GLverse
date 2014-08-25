@@ -12,15 +12,20 @@ TrueTypeFont::TrueTypeFont(FT_Face face, string name)
 	font_name = name;
 }
 
-shared_ptr<FT_GlyphSlotRec> TrueTypeFont::getGlyphSlot(wchar_t c)
+TrueTypeGlyph TrueTypeFont::getGlyphSlot(wchar_t c)
 {
 	if (glyphs.count(c))
 	{
 		return glyphs[c];
 	}
 
-	if (FT_Load_Char(font_face, c, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT))
+#ifdef TARGET_LCD
+	if (FT_Load_Char(font_face, c, FT_LOAD_NO_BITMAP | FT_LOAD_RENDER | FT_LOAD_TARGET_LCD))
 		return nullptr;
+#else
+	if (FT_Load_Char(font_face, c, FT_LOAD_NO_BITMAP | FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT))
+		return nullptr;
+#endif
 
 	auto g = font_face->glyph;
 	glyphs[c] = make_shared<FT_GlyphSlotRec>();
@@ -32,34 +37,52 @@ shared_ptr<FT_GlyphSlotRec> TrueTypeFont::getGlyphSlot(wchar_t c)
 	glyphs[c]->lsb_delta = g->lsb_delta;
 	glyphs[c]->rsb_delta = g->rsb_delta;
 
-	size_t buffer_length = g->bitmap.width * g->bitmap.rows;
-	glyphs[c]->bitmap.buffer = new uint8_t[buffer_length];
-	memcpy(glyphs[c]->bitmap.buffer, g->bitmap.buffer, buffer_length);
-
-	TexelVector buffer(g->bitmap.width, g->bitmap.rows, { 255, 255, 255, 0 });
+	int tex_w = g->bitmap.width;
+	int tex_h = g->bitmap.rows;
+	size_t buffer_size = g->bitmap.rows * std::abs(g->bitmap.pitch);
+	glyphs[c]->bitmap.buffer = new uint8_t[buffer_size];
+	memcpy(glyphs[c]->bitmap.buffer, g->bitmap.buffer, buffer_size);
+	TexelVector buffer(tex_w, tex_h, { 255, 255, 255, 255 });
+#ifdef TARGET_LCD
+	// TODO: solve this somehow
+#else
 	for (size_t i = 0; i < buffer.size(); i++)
 	{
 		auto & texel = buffer.at(i);
-		texel.a = saturate_add(texel.a, g->bitmap.buffer[i]);
+		texel.a = g->bitmap.buffer[i];
 	}
+#endif
 
-	GLuint tex;
-	glDeleteTextures(1, &tex);
-	glGenTextures(1, &tex);
-	glBindTexture(GL_TEXTURE_2D, tex);
+	GLuint tex_id;
+	glDeleteTextures(1, &tex_id);
+	glGenTextures(1, &tex_id);
+	glBindTexture(GL_TEXTURE_2D, tex_id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, glyphs[c]->bitmap.width, glyphs[c]->bitmap.rows, 0, GL_BGRA, GL_UNSIGNED_BYTE, (uint8_t*)buffer.data());
-	glyphs[c]->generic.data = (void*)tex;
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex_w, tex_h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (uint8_t*)buffer.data());
+
+	glyphs_ex[c] = make_shared<GlyphSlotRecEx>();
+	glyphs_ex[c]->texture.tex_id = tex_id;
+	glyphs_ex[c]->texture.tex_w = tex_w;
+	glyphs_ex[c]->texture.tex_h = tex_h;
 
 	return glyphs[c];
 }
 
+TrueTypeGlyphEx TrueTypeFont::getGlyphSlotEx(wchar_t c)
+{
+	if (glyphs.count(c))
+	{
+		return glyphs_ex[c];
+	}
+	return nullptr;
+}
+
 GLuint TrueTypeFont::getGlyphTexture(wchar_t c)
 {
-	return (GLuint)getGlyphSlot(c)->generic.data;
+	return getGlyphSlotEx(c)->texture.tex_id;
 }
 
 string TrueTypeFont::getFontName()

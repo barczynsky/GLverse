@@ -11,6 +11,9 @@ FontRepository& FontRepository::instance()
 	{
 		font_repository_instance = make_unique<FontRepository>();
 		FT_Init_FreeType(&ft);
+#ifdef TARGET_LCD
+		FT_Library_SetLcdFilter(ft, FT_LCD_FILTER_DEFAULT);
+#endif
 	}
 	return *font_repository_instance;
 }

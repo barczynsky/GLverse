@@ -19,22 +19,28 @@ public:
 private:
 	StringType text;
 	std::shared_ptr<TrueTypeFont> font;
-	struct FontTexture {
-		GLuint id{ 0 };
-		FT_Pos b{ 0 };
-		int w{ 0 };
-		int h{ 0 };
-		int xoff{ 0 };
-		int yoff{ 0 };
-	} tex;
+	struct GLTexture {
+		GLuint tex_id{ 0 };
+		int tex_w{ 0 };
+		int tex_h{ 0 };
+	} texture;
+	union RGBA_glColor4fv {
+		struct {
+			float r,g,b,a;
+		};
+		GLfloat color4fv[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
+		operator GLfloat*() { return color4fv; }
+	} text_color;
 
-	FT_Pos text_origin{ 0 };
+	FT_Pos text_border{ 0 };
+	FT_Vector text_origin{ 0, 0 };
+	FT_Pos text_baseline{ 0 };
 	FT_Pos text_width{ 0 };
 	FT_Pos text_height{ 0 };
+	// FT_Vector text_advance{ 0, 0 };
+
 	FT_Pos text_size{ 0 };
 	FT_Pos text_spacing{ 0 };
-
-	GLfloat text_color[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
 
 	// int line_count{ 1 };
 	// int wrap_count{ 0 };
@@ -52,9 +58,9 @@ public:
 		return text;
 	}
 
-	virtual float getOrigin()
+	virtual float getBaseline()
 	{
-		return static_cast<float>(text_origin / 64.0);
+		return static_cast<float>(text_baseline / 64.0);
 	}
 
 	virtual float getWidth()
@@ -98,22 +104,22 @@ public:
 
 	void setOpacity(float pct = 100.0f)
 	{
-		text_color[3] = pct / 100.0f;
+		text_color.a = pct / 100.0f;
 	}
 
 	void setColor(float r, float g, float b)
 	{
-		text_color[0] = r;
-		text_color[1] = g;
-		text_color[2] = b;
+		text_color.r = r;
+		text_color.g = g;
+		text_color.b = b;
 	}
 
 	template<typename ColorType>
 	void setColor(ColorType color)
 	{
-		text_color[0] = color.r;
-		text_color[1] = color.g;
-		text_color[2] = color.b;
+		text_color.r = color.r;
+		text_color.g = color.g;
+		text_color.b = color.b;
 	}
 
 public:
@@ -124,7 +130,7 @@ public:
 		if (text.empty())
 			return;
 
-		text_origin = 0;
+		text_baseline = 0;
 		text_width = 0;
 		text_height = 0;
 		text_size = font->getFontHeight();
@@ -135,75 +141,87 @@ public:
 			if (g == nullptr)
 				continue;
 
-			text_origin = std::max(text_origin, g->metrics.horiBearingY);
-			text_width += g->advance.x;
-			text_height = std::max(text_height, text_origin - g->metrics.horiBearingY + g->metrics.height);
+			text_baseline = std::max(text_baseline, g->metrics.horiBearingY);
+			text_width += g->advance.x + text_spacing;
+			text_height = std::max(text_height, text_baseline - g->metrics.horiBearingY + g->metrics.height);
 		}
 
-		tex.b = text_size >> 3;
-		tex.w = (text_width + tex.b * 4) >> 6;
-		tex.h = (text_height + tex.b * 2) >> 6;
-		tex.xoff = 0 - (tex.b >> 6);
-		tex.yoff = 0 - ((text_origin + tex.b) >> 6);
+		text_border = (text_size >> 3 >> 6) << 6;
+		texture.tex_w = (text_width + text_border * 3) >> 6;
+		texture.tex_h = (text_height + text_border * 2) >> 6;
+		text_origin.x = -((text_border) >> 6 << 6);
+		text_origin.y = -((text_border + text_baseline) >> 6 << 6);
 		// fprintf(stderr, "Text: '%s', ", text.c_str());
-		// fprintf(stderr, "W: %d(%ld), H: %d(%ld)\n", tex.w, text_width, tex.h, text_height);
+		// fprintf(stderr, "W: %d(%ld), H: %d(%ld)\n", texture.tex_w, text_width, texture.tex_h, text_height);
+		// fprintf(stderr, "OrigX: %ld(%ld), OrigY: %ld(%ld)\n", text_origin.x >> 6, text_origin.x, text_origin.y >> 6, text_origin.y);
 
-		TexelVector buffer(tex.w, tex.h, { 255, 255, 255, 0 });
-		FT_Pos cursor = 0 - (font->getGlyphSlot(text[0])->metrics.horiBearingX >> 6); //TODO
+		TexelVector buffer(texture.tex_w, texture.tex_h, { 0, 0, 0, 0 });
+		FT_Pos cursor = 0 - (font->getGlyphSlot(text.front())->metrics.horiBearingX >> 6);
 		wchar_t prev_c = 0;
-
 		for (auto c : text)
 		{
 			auto g = font->getGlyphSlot(c);
 			if (g == nullptr)
 				continue;
 
-			// auto kerning = font->getFontKerning(prev_c, c);
-			// cursor += kerning.x; //TODO
+			auto kerning = font->getFontKerning(prev_c, c);
+			cursor += kerning.x;
 			// if (kerning.x) fprintf(stderr, "kerning of %lc and %lc is (%ld,%ld)\n", prev_c, c, kerning.x, kerning.y);
 
-			int xoff = (cursor + g->metrics.horiBearingX + tex.b) >> 6;
-			int yoff = (text_origin - g->metrics.horiBearingY + tex.b) >> 6;
-
+			int xoff = (cursor + g->metrics.horiBearingX + text_border) >> 6;
+			int yoff = (text_baseline - g->metrics.horiBearingY + text_border) >> 6;
 			for (int y = 0; y < g->bitmap.rows; y++)
 			{
-				for (int x = 0; x < g->bitmap.width; x++)
+#ifdef TARGET_LCD
+				const int true_width = g->bitmap.width / 3;
+#else
+				const int true_width = g->bitmap.width;
+#endif
+				for (int x = 0; x < true_width; x++)
 				{
 					auto & texel = buffer.at(xoff + x, yoff + y);
-					texel.a = saturate_add(texel.a, g->bitmap.buffer[g->bitmap.width * y + x]);
-					texel.a = saturate_add(texel.a, 31);
+#ifdef TARGET_LCD
+					const int idx = g->bitmap.pitch * y + x * 3;
+					texel.r = saturate_add(texel.r, g->bitmap.buffer[idx + 0]);
+					texel.g = saturate_add(texel.g, g->bitmap.buffer[idx + 1]);
+					texel.b = saturate_add(texel.b, g->bitmap.buffer[idx + 2]);
+					texel.a = std::max(texel.r, std::max(texel.g, texel.b));
+#else
+					texel.r = 255;
+					texel.g = 255;
+					texel.b = 255;
+					texel.a = saturate_add(texel.a, g->bitmap.buffer[g->bitmap.pitch * y + x]);
+#endif
+					// texel.a = saturate_add(texel.a, 31);
+					// fprintf(stderr, "(%d,%d,%d,%d)\n", texel.r, texel.g, texel.b, texel.a);
 				}
 			}
 
-			// cursor += g->advance.x + text_spacing; //TODO
-			cursor += g->advance.x;
+			cursor += g->advance.x + text_spacing;
 			prev_c = c;
 		}
 
-		glDeleteTextures(1, &tex.id);
-		glGenTextures(1, &tex.id);
-		glBindTexture(GL_TEXTURE_2D, tex.id);
+		glDeleteTextures(1, &texture.tex_id);
+		glGenTextures(1, &texture.tex_id);
+		glBindTexture(GL_TEXTURE_2D, texture.tex_id);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tex.w, tex.h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (uint8_t*)buffer.data());
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texture.tex_w, texture.tex_h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (uint8_t*)buffer.data());
 	}
 
 	virtual void drawText(int x, int y)
 	{
-		if (font == nullptr)
-			return;
-
-		int w = tex.w;
-		int h = tex.h;
-		x += tex.xoff;
-		y += tex.yoff;
+		int w = texture.tex_w;
+		int h = texture.tex_h;
+		x += text_origin.x >> 6;
+		y += text_origin.y >> 6;
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, tex.id);
+		glBindTexture(GL_TEXTURE_2D, texture.tex_id);
 		glColor4fv(text_color);
 		glBegin(GL_QUADS);
 			glTexCoord2f(0.0f, 0.0f);
@@ -221,12 +239,12 @@ public:
 
 	void drawBounds(int x, int y)
 	{
-		int w = tex.w;
-		int h = tex.h;
-		x += tex.xoff;
-		y += tex.yoff;
+		int w = texture.tex_w;
+		int h = texture.tex_h;
+		x += text_origin.x >> 6;
+		y += text_origin.y >> 6;
 
-		glColor3f(0.0f, 1.0f, 0.0f);
+		glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
 		glLineWidth(1);
 		glBegin(GL_LINE_LOOP);
 			glVertex2f(x, y);
@@ -236,22 +254,21 @@ public:
 		glEnd();
 	}
 
-	void drawOrigin(int x, int y)
+	void drawBaseline(int x, int y)
 	{
-		int len = text_width >> 6;
-		y += text_size >> 14;
+		int w = text_width >> 6;
 
-		glColor3f(1.0f, 0.0f, 0.0f);
+		glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
 		glLineWidth(1);
 		glBegin(GL_LINES);
 			glVertex2f(x, y);
-			glVertex2f(x + len, y);
+			glVertex2f(x + w, y);
 		glEnd();
 	}
 
-	void drawCross(int x, int y)
+	void drawOrigin(int x, int y)
 	{
-		glColor3f(1.0f, 1.0f, 1.0f);
+		glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
 		glLineWidth(1);
 		glBegin(GL_LINES);
 			glVertex2f(x - 10, y);
@@ -265,8 +282,8 @@ public:
 	{
 		this->drawText(x, y);
 		this->drawBounds(x, y);
+		this->drawBaseline(x, y);
 		this->drawOrigin(x, y);
-		this->drawCross(x, y);
 	}
 
 };
