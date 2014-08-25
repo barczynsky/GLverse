@@ -2,8 +2,8 @@
 
 using namespace std;
 
-StaticText::StaticText(string font_name, int font_size, StringType text)
-: BaseText(font_name, font_size)
+StaticText::StaticText(string font_name, int font_size, StringType text) :
+BaseText(font_name, font_size)
 {
 	setText(std::move(text));
 }

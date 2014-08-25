@@ -6,8 +6,9 @@
 #include <GLFW/glfw3.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
-// #include FT_LCD_FILTER_H
-// #define TARGET_LCD
+#include FT_LCD_FILTER_H
+#define TARGET_LCD
+// #define ENABLE_SHADOWS 31
 
 struct GlyphSlotRecEx
 {

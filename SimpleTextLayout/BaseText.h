@@ -47,8 +47,8 @@ private:
 
 public:
 	// BaseText(){}
-	BaseText(std::string font_name, int font_size)
-	: font { std::move(FontRepository::instance().getFont(font_name, font_size)) }
+	BaseText(std::string font_name, int font_size) :
+	font { std::move(FontRepository::instance().getFont(font_name, font_size)) }
 	{
 	}
 
@@ -146,16 +146,18 @@ public:
 			text_height = std::max(text_height, text_baseline - g->metrics.horiBearingY + g->metrics.height);
 		}
 
-		text_border = (text_size >> 3 >> 6) << 6;
-		texture.tex_w = (text_width + text_border * 3) >> 6;
+		text_border = (text_size >> 2) >> 6 << 6;
+		texture.tex_w = (text_width + text_border * 4) >> 6;
 		texture.tex_h = (text_height + text_border * 2) >> 6;
-		text_origin.x = -((text_border) >> 6 << 6);
-		text_origin.y = -((text_border + text_baseline) >> 6 << 6);
-		// fprintf(stderr, "Text: '%s', ", text.c_str());
+		texture.tex_w = 2 << (int)std::log2(texture.tex_w);
+		texture.tex_h = 2 << (int)std::log2(texture.tex_h);
+		text_origin.x = 0 - ((text_border) >> 6 << 6);
+		text_origin.y = 0 - ((text_border + text_baseline) >> 6 << 6);
+		// fprintf(stderr, "Text: '%s',", text.c_str());
 		// fprintf(stderr, "W: %d(%ld), H: %d(%ld)\n", texture.tex_w, text_width, texture.tex_h, text_height);
 		// fprintf(stderr, "OrigX: %ld(%ld), OrigY: %ld(%ld)\n", text_origin.x >> 6, text_origin.x, text_origin.y >> 6, text_origin.y);
 
-		TexelVector buffer(texture.tex_w, texture.tex_h, { 0, 0, 0, 0 });
+		TexelVector buffer(texture.tex_w, texture.tex_w, { 0, 0, 0, 0 });
 		FT_Pos cursor = 0 - (font->getGlyphSlot(text.front())->metrics.horiBearingX >> 6);
 		wchar_t prev_c = 0;
 		for (auto c : text)
@@ -166,18 +168,17 @@ public:
 
 			auto kerning = font->getFontKerning(prev_c, c);
 			cursor += kerning.x;
-			// if (kerning.x) fprintf(stderr, "kerning of %lc and %lc is (%ld,%ld)\n", prev_c, c, kerning.x, kerning.y);
-
+			// if (kerning.x) fprintf(stderr, "kerning for '%lc' after '%lc' is (%ld,%ld)\n", prev_c, c, kerning.x, kerning.y);
+#ifdef TARGET_LCD
+			int bitmap_width = g->bitmap.width / 3;
+#else
+			int bitmap_width = g->bitmap.width;
+#endif
 			int xoff = (cursor + g->metrics.horiBearingX + text_border) >> 6;
 			int yoff = (text_baseline - g->metrics.horiBearingY + text_border) >> 6;
 			for (int y = 0; y < g->bitmap.rows; y++)
 			{
-#ifdef TARGET_LCD
-				const int true_width = g->bitmap.width / 3;
-#else
-				const int true_width = g->bitmap.width;
-#endif
-				for (int x = 0; x < true_width; x++)
+				for (int x = 0; x < bitmap_width; x++)
 				{
 					auto & texel = buffer.at(xoff + x, yoff + y);
 #ifdef TARGET_LCD
@@ -192,8 +193,10 @@ public:
 					texel.b = 255;
 					texel.a = saturate_add(texel.a, g->bitmap.buffer[g->bitmap.pitch * y + x]);
 #endif
-					// texel.a = saturate_add(texel.a, 31);
-					// fprintf(stderr, "(%d,%d,%d,%d)\n", texel.r, texel.g, texel.b, texel.a);
+#ifdef ENABLE_SHADOWS
+					texel.a = saturate_add(texel.a, ENABLE_SHADOWS);
+#endif
+					// fprintf(stderr, "BGRATexel(%d,%d,%d,%d)\n", texel.r, texel.g, texel.b, texel.a);
 				}
 			}
 
@@ -209,6 +212,14 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texture.tex_w, texture.tex_h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (uint8_t*)buffer.data());
+	}
+
+	void drawAll(int x, int y)
+	{
+		this->drawText(x, y);
+		this->drawBounds(x, y);
+		this->drawBaseline(x, y);
+		this->drawOrigin(x, y);
 	}
 
 	virtual void drawText(int x, int y)
@@ -268,7 +279,7 @@ public:
 
 	void drawOrigin(int x, int y)
 	{
-		glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		glLineWidth(1);
 		glBegin(GL_LINES);
 			glVertex2f(x - 10, y);
@@ -276,14 +287,6 @@ public:
 			glVertex2f(x, y - 10);
 			glVertex2f(x, y + 10);
 		glEnd();
-	}
-
-	void drawAll(int x, int y)
-	{
-		this->drawText(x, y);
-		this->drawBounds(x, y);
-		this->drawBaseline(x, y);
-		this->drawOrigin(x, y);
 	}
 
 };

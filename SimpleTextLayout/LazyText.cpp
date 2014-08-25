@@ -2,8 +2,8 @@
 
 using namespace std;
 
-LazyText::LazyText(string font_name, int font_size, StringType text)
-: BaseText(font_name, font_size)
+LazyText::LazyText(string font_name, int font_size, StringType text) :
+BaseText(font_name, font_size)
 {
 	setText(std::move(text));
 }
