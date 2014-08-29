@@ -6,11 +6,12 @@
 class LazyText : public BaseText<std::string>
 {
 private:
-	bool text_changed{ false };
+	bool text_changed{ true };
 
 public:
 	// LazyText(){}
-	LazyText(std::string font_name, int font_size, StringType text = StringType());
+	LazyText(std::string font_name, int font_size);
+	LazyText(std::shared_ptr<TrueTypeFont> font_ptr);
 
 public:
 	void setText(StringType new_text);
@@ -18,6 +19,7 @@ public:
 	void setSpacing(float sp = 0.0f);
 
 public:
+	void makeText();
 	void drawText(int x, int y);
 
 };
