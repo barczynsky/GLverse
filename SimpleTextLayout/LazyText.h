@@ -21,5 +21,6 @@ public:
 public:
 	void makeText();
 	void drawText(int x, int y);
+	void drawAll(int x, int y);
 
 };

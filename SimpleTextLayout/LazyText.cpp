@@ -45,3 +45,9 @@ void LazyText::drawText(int x, int y)
 	makeText();
 	BaseText::drawText(x, y);
 }
+
+void LazyText::drawAll(int x, int y)
+{
+	makeText();
+	BaseText::drawAll(x, y);
+}

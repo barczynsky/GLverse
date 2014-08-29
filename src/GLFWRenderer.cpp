@@ -71,26 +71,29 @@ void GLFWRenderer::run()
 	{
 		glfwMakeContextCurrent(window);
 
-		string text = "Lorem ipsum dolor sit amet,";
-		int size = 72;
+		string text = "Lorem ipsum dolor sit amet,\n"
+			"consectetur adipisicing elit,\n"
+			"sed do eiusmod tempor incididunt\n"
+			"ut labore et dolore magna aliqua.";
+		int size = 48;
 
-		LazyText t1("Lora/Lora-Regular", size);
+		LazyText t1("DejaVuSans", size);
 		t1.setText(text);
-		t1.setAlign(TextAlign::Center);
+		// t1.setAlign(TextAlign::Left);
 		// t1.setColor(1, 0.5, 0);
 		// t1.setOpacity(90);
 		// t1.setSpacing(2);
 
-		LazyText t2("NoticiaText/NoticiaText-Regular", size);
-		t2.setText(text);
-		t2.setAlign(TextAlign::Center);
+		// LazyText t2("NoticiaText/NoticiaText-Regular", size);
+		// t2.setText(text);
+		// t2.setAlign(TextAlign::Center);
 		// t2.setColor(0.5, 1, 1);
 		// t2.setOpacity(60);
 		// t2.setSpacing(2);
 
-		LazyText t3("KaushanScript/KaushanScript-Regular", size);
-		t3.setText(text);
-		t3.setAlign(TextAlign::Center);
+		// LazyText t3("KaushanScript/KaushanScript-Regular", size);
+		// t3.setText(text);
+		// t3.setAlign(TextAlign::Center);
 		// t3.setColor(1, 0.5, 0.5);
 		// t3.setOpacity(80);
 		// t3.setSpacing(2);
@@ -100,9 +103,9 @@ void GLFWRenderer::run()
 			glfwMakeContextCurrent(window);
 
 			// glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-			glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+			// glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 			// glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
-			// glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			glMatrixMode(GL_PROJECTION);
@@ -126,9 +129,9 @@ void GLFWRenderer::run()
 			// t3.setText(to_string(frame_no));
 			// frame_no++;
 
-			t1.drawAll(width / 2, 50 + size);
-			t2.drawAll(width / 2, 70 + size * 2);
-			t3.drawAll(width / 2, 90 + size * 3);
+			t1.drawText(50, 50 + size);
+			// t2.drawText(width / 2, 70 + size * 2);
+			// t3.drawText(width / 2, 90 + size * 3);
 
 			// t1.setSize(size);
 			// t2.setSize(size);

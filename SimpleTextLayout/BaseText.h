@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <sstream>
 #include <vector>
 #include "saturate_add"
 
@@ -17,29 +18,32 @@ enum class TextAlign
 	Right = -2
 };
 
-template<typename string_t = std::string>
+template<typename text_t = std::string>
 class BaseText
 {
 public:
-	typedef string_t StringType;
+	typedef text_t StringType;
 
 	union TextColor {
 		struct {
 			float r,g,b,a;
 		};
 		operator GLfloat*() { return color4fv; }
-	private:
-		GLfloat color4fv[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
+		GLfloat color4fv[4];
 	};
 
-private:
+protected:
 	std::shared_ptr<TrueTypeFont> font;
 
-private:
-	StringType text;
-	TextColor text_color;
-	TextAlign text_align;
+protected:
+	std::vector<StringType> text_lines;
 
+protected:
+	StringType text;
+	TextColor text_color{ { 1.0f, 1.0f, 1.0f, 1.0f } };
+	TextAlign text_align{ TextAlign::Left };
+
+protected:
 	GLtexture texture{};
 	FT_Pos text_border{ 0 };
 	FT_Vector text_origin{ 0, 0 };
@@ -51,9 +55,6 @@ private:
 	FT_Pos text_height{ 0 };
 	FT_Pos text_size{ 0 };
 	FT_Pos text_spacing{ 0 };
-
-	// int line_count{ 1 };
-	// int wrap_count{ 0 };
 
 public:
 	// BaseText(){}
@@ -73,58 +74,65 @@ public:
 	}
 
 public:
-	virtual std::shared_ptr<TrueTypeFont> getFont()
+	std::shared_ptr<TrueTypeFont> getFont()
 	{
 		return font;
 	}
 
-	virtual StringType getText()
+	StringType getText()
 	{
 		return text;
 	}
 
-	virtual TextAlign getAlign()
+	TextAlign getAlign()
 	{
 		return text_align;
 	}
 
-	virtual TextColor getColor()
+	TextColor getColor()
 	{
 		return text_color;
 	}
 
-	virtual float getOpacity()
+	float getOpacity()
 	{
 		return text_color.a * 100.0f;
 	}
 
-	virtual float getBaseline()
+	float getBaseline()
 	{
 		return static_cast<float>(text_baseline / 64.0);
 	}
 
-	virtual float getWidth()
+	float getWidth()
 	{
 		return static_cast<float>(text_width / 64.0);
 	}
 
-	virtual float getHeight()
+	float getHeight()
 	{
 		return static_cast<float>(text_height / 64.0);
 	}
 
-	virtual float getSize()
+	float getSize()
 	{
 		return static_cast<float>(text_size / 64.0);
 	}
 
-	virtual float getSpacing()
+	float getSpacing()
 	{
 		return static_cast<float>(text_spacing / 64.0);
 	}
 
-	// int getLineCount() { return line_count; }
-	// int getWrapCount() { return wrap_count; }
+	size_t getLineCount()
+	{
+		return text_lines.size();
+	}
+
+	size_t getWrapCount()
+	{
+		return text_lines.size() - 1;
+	}
 
 public:
 	virtual void setFont(std::string font_name, int font_size)
@@ -132,7 +140,7 @@ public:
 		font = std::move(FontRepository::instance().getFont(font_name, font_size));
 	}
 
-	void setFont(std::shared_ptr<TrueTypeFont> new_font)
+	virtual void setFont(std::shared_ptr<TrueTypeFont> new_font)
 	{
 		font = std::move(new_font);
 	}
@@ -156,12 +164,6 @@ public:
 	{
 		text_align = align;
 	}
-
-	// void setAlign(float x, float y)
-	// {
-	// 	text_align.x = x;
-	// 	text_align.y = y;
-	// }
 
 	void setOpacity(float pct = 100.0f)
 	{
@@ -214,6 +216,19 @@ public:
 		return static_cast<float>(string_width / 64.0);
 	}
 
+public:
+	virtual void splitText()
+	{
+		text_lines.clear();
+		std::istringstream ss(text);
+
+		while(!ss.eof())
+		{
+			text_lines.emplace_back();
+			std::getline(ss, text_lines.back());
+		}
+	}
+
 	virtual void measureText()
 	{
 		text_baseline = 0;
@@ -221,18 +236,79 @@ public:
 		text_height = 0;
 		text_size = font->getFontHeight();
 
-		typename StringType::value_type prev_c = 0;
-		for (auto c : text)
+		if (text_lines.size() == 1)
 		{
-			auto g = font->getGlyphSlot(c);
-			if (g == nullptr)
-				continue;
+			typename StringType::value_type prev_c = 0;
+			for (auto c : text)
+			{
+				auto g = font->getGlyphSlot(c);
+				if (g == nullptr)
+					continue;
 
-			auto kerning = font->getFontKerning(prev_c, c);
+				auto kerning = font->getFontKerning(prev_c, c);
 
-			text_baseline = std::max(text_baseline, g->metrics.horiBearingY);
-			text_width += g->advance.x + kerning.x + text_spacing;
-			text_height = std::max(text_height, text_baseline - g->metrics.horiBearingY + g->metrics.height);
+				text_baseline = std::max(text_baseline, g->metrics.horiBearingY);
+				text_width += g->advance.x + kerning.x + text_spacing;
+				text_height = std::max(text_height, text_baseline + g->metrics.height - g->metrics.horiBearingY);
+			}
+		}
+		else if (text_lines.size() > 1)
+		{
+			for (int i = 0; i < 1; i++)
+			{
+				FT_Pos line_width = 0;
+				typename StringType::value_type prev_c = 0;
+				for (auto c : text_lines[i])
+				{
+					auto g = font->getGlyphSlot(c);
+					if (g == nullptr)
+						continue;
+
+					auto kerning = font->getFontKerning(prev_c, c);
+					line_width += g->advance.x + kerning.x + text_spacing;
+					text_baseline = std::max(text_baseline, g->metrics.horiBearingY);
+				}
+				text_width = std::max(text_width, line_width);
+				text_height += text_baseline;
+			}
+			for (int i = 1; i < text_lines.size() - 1; i++)
+			{
+				FT_Pos line_width = 0;
+				typename StringType::value_type prev_c = 0;
+				for (auto c : text_lines[i])
+				{
+					auto g = font->getGlyphSlot(c);
+					if (g == nullptr)
+						continue;
+
+					auto kerning = font->getFontKerning(prev_c, c);
+					line_width += g->advance.x + kerning.x + text_spacing;
+				}
+				text_width = std::max(text_width, line_width);
+				text_height += text_size;
+			}
+			for (int i = text_lines.size() - 1; i < text_lines.size(); i++)
+			{
+				FT_Pos line_width = 0;
+				FT_Pos max_descent = 0;
+				typename StringType::value_type prev_c = 0;
+				for (auto c : text_lines[i])
+				{
+					auto g = font->getGlyphSlot(c);
+					if (g == nullptr)
+						continue;
+
+					auto kerning = font->getFontKerning(prev_c, c);
+					line_width += g->advance.x + kerning.x + text_spacing;
+					max_descent = std::max(max_descent, g->metrics.height - g->metrics.horiBearingY);
+				}
+				text_width = std::max(text_width, line_width);
+				text_height += max_descent;
+			}
+		}
+		else
+		{
+			fprintf(stderr, "%s\n", "ZERO_LINES_EXCEPTION");
 		}
 	}
 
@@ -240,6 +316,9 @@ public:
 	{
 		if (font == nullptr)
 			return;
+
+		if (text.find('\n'))
+			splitText();
 
 		measureText();
 
@@ -249,56 +328,59 @@ public:
 		texture.tex_w = 2 << (int)std::log2(texture.tex_w);
 		texture.tex_h = 2 << (int)std::log2(texture.tex_h);
 		text_origin.x = 0 - ((text_border) >> 6 << 6);
-		text_origin.y = 0 - ((text_border + text_baseline) >> 6 << 6);
+		text_origin.y = 0 - ((text_border + text_size) >> 6 << 6);
 		// fprintf(stderr, "Text: '%s'\n", text.c_str());
 		// fprintf(stderr, "W: %d(%ld), H: %d(%ld)\n", texture.tex_w, text_width, texture.tex_h, text_height);
 		// fprintf(stderr, "OrigX: %ld(%ld), OrigY: %ld(%ld)\n", text_origin.x >> 6, text_origin.x, text_origin.y >> 6, text_origin.y);
 
 		TexelVector buffer(texture.tex_w, texture.tex_w, { 0, 0, 0, 0 });
-		FT_Pos cursor = 0 - (font->getGlyphSlot(text.front())->metrics.horiBearingX >> 6);
-		typename StringType::value_type prev_c = 0;
-		for (auto c : text)
+		FT_Pos current_baseline = text_baseline;
+		for (auto & line : text_lines)
 		{
-			auto g = font->getGlyphSlot(c);
-			if (g == nullptr)
-				continue;
-
-			auto kerning = font->getFontKerning(prev_c, c);
-			cursor += kerning.x;
-			// if (kerning.x) fprintf(stderr, "kerning for '%lc' after '%lc' is (%ld,%ld)\n", prev_c, c, kerning.x, kerning.y);
-
-#ifdef TARGET_LCD
-			int bitmap_width = g->bitmap.width / 3;
-#else
-			int bitmap_width = g->bitmap.width;
-#endif
-			int xoff = (cursor + g->metrics.horiBearingX + text_border) >> 6;
-			int yoff = (text_baseline - g->metrics.horiBearingY + text_border) >> 6;
-			for (int y = 0; y < g->bitmap.rows; y++)
+			FT_Pos cursor = 0 - (font->getGlyphSlot(line.front())->metrics.horiBearingX >> 6);
+			typename StringType::value_type prev_c = 0;
+			for (auto c : line)
 			{
-				for (int x = 0; x < bitmap_width; x++)
-				{
-					auto & texel = buffer.at(xoff + x, yoff + y);
-#ifdef TARGET_LCD
-					const int idx = g->bitmap.pitch * y + x * 3;
-					texel.r = saturate_add(texel.r, g->bitmap.buffer[idx + 0]);
-					texel.g = saturate_add(texel.g, g->bitmap.buffer[idx + 1]);
-					texel.b = saturate_add(texel.b, g->bitmap.buffer[idx + 2]);
-					texel.a = std::max({ texel.r, texel.g, texel.b });
-#else
-					texel.r = 255;
-					texel.g = 255;
-					texel.b = 255;
-					texel.a = saturate_add(texel.a, g->bitmap.buffer[g->bitmap.pitch * y + x]);
-#endif
-#ifdef ENABLE_SHADOWS
-					texel.a = saturate_add(texel.a, ENABLE_SHADOWS);
-#endif
-				}
-			}
+				auto g = font->getGlyphSlot(c);
+				if (g == nullptr)
+					continue;
 
-			cursor += g->advance.x + text_spacing;
-			prev_c = c;
+				auto kerning = font->getFontKerning(prev_c, c);
+				cursor += kerning.x;
+				// if (kerning.x || kerning.y) fprintf(stderr, "kerning for '%lc' after '%lc' is (%ld,%ld)\n", prev_c, c, kerning.x, kerning.y);
+			#ifdef TARGET_LCD
+				int bitmap_width = g->bitmap.width / 3;
+			#else
+				int bitmap_width = g->bitmap.width;
+			#endif
+				int xoff = (cursor + g->metrics.horiBearingX + text_border) >> 6;
+				int yoff = (current_baseline - g->metrics.horiBearingY + text_border) >> 6;
+				for (int y = 0; y < g->bitmap.rows; y++)
+				{
+					for (int x = 0; x < bitmap_width; x++)
+					{
+						auto & texel = buffer.at(xoff + x, yoff + y);
+					#ifdef TARGET_LCD
+						const int idx = g->bitmap.pitch * y + x * 3;
+						texel.r = saturate_add(texel.r, g->bitmap.buffer[idx + 0]);
+						texel.g = saturate_add(texel.g, g->bitmap.buffer[idx + 1]);
+						texel.b = saturate_add(texel.b, g->bitmap.buffer[idx + 2]);
+						texel.a = std::max({ texel.r, texel.g, texel.b });
+					#else
+						texel.r = 255;
+						texel.g = 255;
+						texel.b = 255;
+						texel.a = saturate_add(texel.a, g->bitmap.buffer[g->bitmap.pitch * y + x]);
+					#ifdef ENABLE_SHADOWS
+						texel.a = saturate_add(texel.a, ENABLE_SHADOWS);
+					#endif
+					#endif
+					}
+				}
+				cursor += g->advance.x + text_spacing;
+				prev_c = c;
+			}
+			current_baseline += text_size;
 		}
 
 		glDeleteTextures(1, &texture.tex_id);
@@ -311,9 +393,10 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texture.tex_w, texture.tex_h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (uint8_t*)buffer.data());
 	}
 
-	void drawAll(int x, int y)
+public:
+	virtual void drawAll(int x, int y)
 	{
-		drawText(x, y);
+		BaseText::drawText(x, y);
 		drawBounds(x, y);
 		drawBaseline(x, y);
 		drawOrigin(x, y);
@@ -365,14 +448,18 @@ public:
 
 	void drawBaseline(int x, int y)
 	{
-		int w = text_width >> 6;
-		x += w * (float)text_align / 2;
+		for (int i = 0; i < text_lines.size(); ++i)
+		{
+			int s = text_size >> 6;
+			int w = text_width >> 6;
+			x += w * (float)text_align / 2;
 
-		glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
-		glBegin(GL_LINES);
-			glVertex2f(x, y);
-			glVertex2f(x + w, y);
-		glEnd();
+			glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
+			glBegin(GL_LINES);
+				glVertex2f(x, y + s * i);
+				glVertex2f(x + w, y + s * i);
+			glEnd();
+		}
 	}
 
 	void drawOrigin(int x, int y)
