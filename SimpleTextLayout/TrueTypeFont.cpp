@@ -95,6 +95,11 @@ FT_Pos TrueTypeFont::getFontHeight()
 	return font_size->metrics.height;
 }
 
+FT_Pos TrueTypeFont::getXHeight()
+{
+	return getGlyphSlot('x')->metrics.height;
+}
+
 FT_Vector TrueTypeFont::getFontKerning(wchar_t left, wchar_t right)
 {
 	auto prev = FT_Get_Char_Index(font_face, left);

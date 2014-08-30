@@ -11,11 +11,17 @@
 #include "TexelVector.h"
 #include "TrueTypeFont.h"
 
-enum class TextAlign
+enum class TextAlignX
 {
 	Left = 0,
-	Center = -1,
-	Right = -2
+	Center = 1,
+	Right = 2
+};
+enum class TextAlignY
+{
+	Top = 0,
+	Middle = 1,
+	Bottom = 2
 };
 
 template<typename text_t = std::string>
@@ -31,6 +37,10 @@ public:
 		operator GLfloat*() { return color4fv; }
 		GLfloat color4fv[4];
 	};
+	struct TextAlign {
+		TextAlignX x;
+		TextAlignY y;
+	};
 
 protected:
 	std::shared_ptr<TrueTypeFont> font;
@@ -41,7 +51,7 @@ protected:
 protected:
 	StringType text;
 	TextColor text_color{ { 1.0f, 1.0f, 1.0f, 1.0f } };
-	TextAlign text_align{ TextAlign::Left };
+	TextAlign text_align{ TextAlignX::Left, TextAlignY::Top };
 
 protected:
 	GLtexture texture{};
@@ -49,6 +59,8 @@ protected:
 	FT_Vector text_origin{ 0, 0 };
 	// FT_Vector text_align{ 0, 0 };
 	// FT_Vector text_advance{ 0, 0 };
+
+	FT_Pos x_height{ 0 };
 
 	FT_Pos text_baseline{ 0 };
 	FT_Pos text_width{ 0 };
@@ -138,16 +150,19 @@ public:
 	virtual void setFont(std::string font_name, int font_size)
 	{
 		font = std::move(FontRepository::instance().getFont(font_name, font_size));
+		x_height = font->getXHeight();
 	}
 
 	virtual void setFont(std::shared_ptr<TrueTypeFont> new_font)
 	{
 		font = std::move(new_font);
+		x_height = font->getXHeight();
 	}
 
 	virtual void setSize(int font_size)
 	{
 		font = std::move(FontRepository::instance().getFont(font->getFontName(), font_size));
+		x_height = font->getXHeight();
 	}
 
 	virtual void setText(StringType new_text)
@@ -158,6 +173,12 @@ public:
 	virtual void setSpacing(float sp = 0.0f)
 	{
 		text_spacing = static_cast<FT_Pos>(std::floor(sp * 64.0));
+	}
+
+	void setAlign(TextAlignX x, TextAlignY y)
+	{
+		text_align.x = x;
+		text_align.y = y;
 	}
 
 	void setAlign(TextAlign align)
@@ -236,27 +257,10 @@ public:
 		text_height = 0;
 		text_size = font->getFontHeight();
 
-		if (text_lines.size() == 1)
-		{
-			typename StringType::value_type prev_c = 0;
-			for (auto c : text)
-			{
-				auto g = font->getGlyphSlot(c);
-				if (g == nullptr)
-					continue;
-
-				auto kerning = font->getFontKerning(prev_c, c);
-
-				text_baseline = std::max(text_baseline, g->metrics.horiBearingY);
-				text_width += g->advance.x + kerning.x + text_spacing;
-				text_height = std::max(text_height, text_baseline + g->metrics.height - g->metrics.horiBearingY);
-			}
-		}
-		else if (text_lines.size() > 1)
-		{
 			for (int i = 0; i < 1; i++)
 			{
 				FT_Pos line_width = 0;
+				FT_Pos max_ascent = 0;
 				typename StringType::value_type prev_c = 0;
 				for (auto c : text_lines[i])
 				{
@@ -266,10 +270,11 @@ public:
 
 					auto kerning = font->getFontKerning(prev_c, c);
 					line_width += g->advance.x + kerning.x + text_spacing;
-					text_baseline = std::max(text_baseline, g->metrics.horiBearingY);
+					max_ascent = std::max(max_ascent, g->metrics.horiBearingY);
 				}
+				text_baseline = max_ascent;
 				text_width = std::max(text_width, line_width);
-				text_height += text_baseline;
+				text_height += max_ascent;
 			}
 			for (int i = 1; i < text_lines.size() - 1; i++)
 			{
@@ -285,8 +290,8 @@ public:
 					line_width += g->advance.x + kerning.x + text_spacing;
 				}
 				text_width = std::max(text_width, line_width);
-				text_height += text_size;
 			}
+			text_height += text_size * (text_lines.size() - 1);
 			for (int i = text_lines.size() - 1; i < text_lines.size(); i++)
 			{
 				FT_Pos line_width = 0;
@@ -305,11 +310,6 @@ public:
 				text_width = std::max(text_width, line_width);
 				text_height += max_descent;
 			}
-		}
-		else
-		{
-			fprintf(stderr, "%s\n", "ZERO_LINES_EXCEPTION");
-		}
 	}
 
 	virtual void makeText()
@@ -317,23 +317,21 @@ public:
 		if (font == nullptr)
 			return;
 
-		if (text.find('\n'))
-			splitText();
-
+		splitText();
 		measureText();
 
-		text_border = (text_size >> 2) >> 6 << 6;
+		text_border = std::max(2L, (text_size >> 2) >> 6 << 6);
 		texture.tex_w = (text_width + text_border * 4) >> 6;
 		texture.tex_h = (text_height + text_border * 2) >> 6;
 		texture.tex_w = 2 << (int)std::log2(texture.tex_w);
 		texture.tex_h = 2 << (int)std::log2(texture.tex_h);
 		text_origin.x = 0 - ((text_border) >> 6 << 6);
-		text_origin.y = 0 - ((text_border + text_size) >> 6 << 6);
+		text_origin.y = 0 - ((text_border + text_baseline) >> 6 << 6);
 		// fprintf(stderr, "Text: '%s'\n", text.c_str());
 		// fprintf(stderr, "W: %d(%ld), H: %d(%ld)\n", texture.tex_w, text_width, texture.tex_h, text_height);
 		// fprintf(stderr, "OrigX: %ld(%ld), OrigY: %ld(%ld)\n", text_origin.x >> 6, text_origin.x, text_origin.y >> 6, text_origin.y);
 
-		TexelVector buffer(texture.tex_w, texture.tex_w, { 0, 0, 0, 0 });
+		TexelVector buffer(texture.tex_w, texture.tex_h, { 0, 0, 0, 0 });
 		FT_Pos current_baseline = text_baseline;
 		for (auto & line : text_lines)
 		{
@@ -408,7 +406,11 @@ public:
 		int h = texture.tex_h;
 		x += text_origin.x >> 6;
 		y += text_origin.y >> 6;
-		x += (text_width >> 6) * (float)text_align / 2;
+		float xalign = (float)text_align.x / -2;
+		float yalign = (float)text_align.y / -2;
+		x += (text_width >> 6) * xalign;
+		y += (text_size >> 6) * (text_lines.size() - 1) * yalign;
+		if (text_align.y == TextAlignY::Middle) y += (x_height >> 6) / 2.0f;
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -435,7 +437,11 @@ public:
 		int h = texture.tex_h;
 		x += text_origin.x >> 6;
 		y += text_origin.y >> 6;
-		x += (text_width >> 6) * (float)text_align / 2;
+		float xalign = (float)text_align.x / -2;
+		float yalign = (float)text_align.y / -2;
+		x += (text_width >> 6) * xalign;
+		y += (text_size >> 6) * (text_lines.size() - 1) * yalign;
+		if (text_align.y == TextAlignY::Middle) y += (x_height >> 6) / 2.0f;
 
 		glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
 		glBegin(GL_LINE_LOOP);
@@ -448,11 +454,16 @@ public:
 
 	void drawBaseline(int x, int y)
 	{
+		float xalign = (float)text_align.x / -2;
+		float yalign = (float)text_align.y / -2;
+		x += (text_width >> 6) * xalign;
+		y += (text_size >> 6) * (text_lines.size() - 1) * yalign;
+		if (text_align.y == TextAlignY::Middle) y += (x_height >> 6) / 2.0f;
+
 		for (int i = 0; i < text_lines.size(); ++i)
 		{
 			int s = text_size >> 6;
 			int w = text_width >> 6;
-			x += w * (float)text_align / 2;
 
 			glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
 			glBegin(GL_LINES);

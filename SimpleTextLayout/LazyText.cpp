@@ -14,21 +14,21 @@ BaseText(font_ptr)
 
 void LazyText::setText(StringType new_text)
 {
-	if (getText() != new_text)
+	if (text != new_text)
 		text_changed = true;
 	BaseText::setText(new_text);
 }
 
 void LazyText::setSize(int new_size)
 {
-	if (getSize() != new_size)
+	if (text_size != new_size)
 		text_changed = true;
 	BaseText::setSize(new_size);
 }
 
 void LazyText::setSpacing(float sp)
 {
-	if (getSpacing() != sp)
+	if (text_spacing != sp)
 		text_changed = true;
 	BaseText::setSpacing(sp);
 }

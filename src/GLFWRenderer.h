@@ -25,4 +25,6 @@ public:
 
 	void sleepUntilNextFrame(int frame_count = 1);
 
+	void drawGrid(int xdiv, int ydiv);
+
 };

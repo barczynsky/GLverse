@@ -79,21 +79,19 @@ void GLFWRenderer::run()
 
 		LazyText t1("DejaVuSans", size);
 		t1.setText(text);
-		// t1.setAlign(TextAlign::Left);
+		t1.setAlign(TextAlignX::Center, TextAlignY::Middle);
 		// t1.setColor(1, 0.5, 0);
 		// t1.setOpacity(90);
 		// t1.setSpacing(2);
 
 		// LazyText t2("NoticiaText/NoticiaText-Regular", size);
 		// t2.setText(text);
-		// t2.setAlign(TextAlign::Center);
 		// t2.setColor(0.5, 1, 1);
 		// t2.setOpacity(60);
 		// t2.setSpacing(2);
 
 		// LazyText t3("KaushanScript/KaushanScript-Regular", size);
 		// t3.setText(text);
-		// t3.setAlign(TextAlign::Center);
 		// t3.setColor(1, 0.5, 0.5);
 		// t3.setOpacity(80);
 		// t3.setSpacing(2);
@@ -119,6 +117,8 @@ void GLFWRenderer::run()
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
 
+			drawGrid(4, 4);
+
 			// t1.setOpacity((sin(glfwGetTime() * 4) + 4) * 20.0f);
 			// t2.setOpacity((sin(glfwGetTime() * 4 + 1.0) + 4) * 20.0f);
 			// t3.setOpacity((sin(glfwGetTime() * 4 + 2.0) + 4) * 20.0f);
@@ -129,7 +129,8 @@ void GLFWRenderer::run()
 			// t3.setText(to_string(frame_no));
 			// frame_no++;
 
-			t1.drawText(50, 50 + size);
+			t1.drawAll(width / 2, height / 2);
+			t1.drawAll(width / 2, height / 2);
 			// t2.drawText(width / 2, 70 + size * 2);
 			// t3.drawText(width / 2, 90 + size * 3);
 
@@ -150,4 +151,25 @@ void GLFWRenderer::run()
 
 	if (render_thread.joinable())
 		render_thread.join();
+}
+
+void GLFWRenderer::drawGrid(int xdiv, int ydiv)
+{
+	float xres = width / xdiv;
+	float yres = height / ydiv;
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	for (int i = 1; i < xdiv; i++)
+	{
+		glBegin(GL_LINES);
+			glVertex2f(i * xres, 0);
+			glVertex2f(i * xres, height);
+		glEnd();
+	}
+	for (int i = 1; i < ydiv; i++)
+	{
+		glBegin(GL_LINES);
+			glVertex2f(0, i * yres);
+			glVertex2f(width, i * yres);
+		glEnd();
+	}
 }

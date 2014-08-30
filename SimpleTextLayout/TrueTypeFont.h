@@ -7,8 +7,8 @@
 #include <GLFW/glfw3.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
-#include FT_LCD_FILTER_H
-#define TARGET_LCD
+// #include FT_LCD_FILTER_H
+// #define TARGET_LCD
 // #define ENABLE_SHADOWS 31
 
 #ifdef TARGET_LCD
@@ -49,6 +49,8 @@ public:
 
 	std::string getFontName();
 	FT_Pos getFontHeight();
+	FT_Pos getXHeight();
+
 	FT_Vector getFontKerning(wchar_t prev, wchar_t next);
 
 };
