@@ -9,11 +9,7 @@
 #include FT_FREETYPE_H
 // #include FT_LCD_FILTER_H
 // #define TARGET_LCD
-// #define ENABLE_SHADOWS 31
-
-#ifdef TARGET_LCD
-#undef ENABLE_SHADOWS
-#endif
+// #define GLYPH_SHADOWS 31
 
 struct GLtexture {
 	GLuint tex_id{ 0 };

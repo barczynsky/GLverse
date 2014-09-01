@@ -3,14 +3,13 @@
 #include "GLFWRenderer.h"
 
 #include "LazyText.h"
-#include "StaticText.h"
 
 using namespace std;
 
 GLFWRenderer::GLFWRenderer(int w, int h) : width { w }, height { h }
 {
 	glfwInit();
-	glfwWindowHint(GLFW_SAMPLES, 4);
+	glfwWindowHint(GLFW_SAMPLES, 16);
 	window = glfwCreateWindow(w, h, glfwGetVersionString(), nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 	glewInit();
@@ -79,19 +78,19 @@ void GLFWRenderer::run()
 
 		LazyText t1("DejaVuSans", size);
 		t1.setText(text);
-		t1.setAlign(TextAlignX::Center, TextAlignY::Middle);
+		// t1.setAlign(LazyText::TextAlign::Center);
 		// t1.setColor(1, 0.5, 0);
 		// t1.setOpacity(90);
 		// t1.setSpacing(2);
 
-		// LazyText t2("NoticiaText/NoticiaText-Regular", size);
-		// t2.setText(text);
+		LazyText t2("DejaVuSerif", size);
+		t2.setText(text);
 		// t2.setColor(0.5, 1, 1);
 		// t2.setOpacity(60);
 		// t2.setSpacing(2);
 
-		// LazyText t3("KaushanScript/KaushanScript-Regular", size);
-		// t3.setText(text);
+		LazyText t3("DejaVuSansMono", size);
+		t3.setText(text);
 		// t3.setColor(1, 0.5, 0.5);
 		// t3.setOpacity(80);
 		// t3.setSpacing(2);
@@ -129,7 +128,11 @@ void GLFWRenderer::run()
 			// t3.setText(to_string(frame_no));
 			// frame_no++;
 
-			t1.drawAll(width / 2, height / 2);
+			// t1.setAlign(LazyText::TextAlign::Left);
+			t1.setAlign(LazyText::TextAlign::Center);
+			// t1.setAlign(LazyText::TextAlign::Right);
+			t1.setOrigin(0.5, 0.5);
+
 			t1.drawAll(width / 2, height / 2);
 			// t2.drawText(width / 2, 70 + size * 2);
 			// t3.drawText(width / 2, 90 + size * 3);

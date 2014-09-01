@@ -15,7 +15,7 @@ public:
 
 public:
 	void setText(StringType new_text);
-	void setSize(int new_size);
+	void setFontSize(int font_size);
 	void setSpacing(float sp = 0.0f);
 
 public:

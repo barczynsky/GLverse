@@ -19,11 +19,11 @@ void LazyText::setText(StringType new_text)
 	BaseText::setText(new_text);
 }
 
-void LazyText::setSize(int new_size)
+void LazyText::setFontSize(int font_size)
 {
-	if (text_size != new_size)
+	if (text_size != font_size)
 		text_changed = true;
-	BaseText::setSize(new_size);
+	BaseText::setFontSize(font_size);
 }
 
 void LazyText::setSpacing(float sp)

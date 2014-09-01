@@ -1,6 +1,5 @@
 #include "TrueTypeFont.h"
 #include "TexelVector.h"
-#include "saturate_add"
 
 using namespace std;
 
@@ -20,10 +19,10 @@ TrueTypeGlyph TrueTypeFont::getGlyphSlot(wchar_t c)
 	}
 
 #ifdef TARGET_LCD
-	if (FT_Load_Char(font_face, c, FT_LOAD_NO_BITMAP | FT_LOAD_RENDER | FT_LOAD_TARGET_LCD))
+	if (FT_Load_Char(font_face, c, FT_LOAD_RENDER | FT_LOAD_TARGET_LCD))
 		return nullptr;
 #else
-	if (FT_Load_Char(font_face, c, FT_LOAD_NO_BITMAP | FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT))
+	if (FT_Load_Char(font_face, c, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT))
 		return nullptr;
 #endif
 
