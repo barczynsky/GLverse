@@ -291,7 +291,7 @@ public:
 			text_height += max_ascent;
 			text_lines_w[i] = line_width;
 		}
-		for (int i = 1; i < text_lines.size() - 1; i++)
+		for (int i = 1; i < (int)text_lines.size() - 1; i++)
 		{
 			FT_Pos line_width = 0;
 			typename StringType::value_type prev_c = 0;
@@ -308,7 +308,7 @@ public:
 			text_lines_w[i] = line_width;
 		}
 		text_height += text_size * (text_lines.size() - 1);
-		for (int i = text_lines.size() - 1; i < text_lines.size(); i++)
+		for (int i = text_lines.size() - 1; i < (int)text_lines.size(); i++)
 		{
 			FT_Pos line_width = 0;
 			FT_Pos max_descent = 0;
@@ -337,7 +337,7 @@ public:
 		splitText();
 		measureText();
 
-		text_border.x = std::max(2L, (text_size >> 2) >> 6 << 6);
+		text_border.x = std::max(2L << 6, (text_size >> 3) >> 6 << 6);
 		text_border.y = text_border.x;
 		texture.tex_w = (text_width + text_border.x * 3) >> 6;
 		texture.tex_h = (text_height + text_border.y * 2) >> 6;
@@ -351,7 +351,7 @@ public:
 
 		TexelVector buffer(texture.tex_w, texture.tex_h, { 0, 0, 0, 0 });
 		FT_Pos current_baseline = text_baseline;
-		for (int i = 0; i < text_lines.size(); i++)
+		for (int i = 0; i < (int)text_lines.size(); i++)
 		{
 			auto & line = text_lines[i];
 
@@ -472,7 +472,7 @@ public:
 	{
 		transformOrigin(x, y);
 
-		for (int i = 0; i < text_lines.size(); ++i)
+		for (int i = 0; i < (int)text_lines.size(); ++i)
 		{
 			int s = text_size >> 6;
 			int w = text_width >> 6;
