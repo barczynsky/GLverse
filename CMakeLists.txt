@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 2.8)
 # -----------------------------------------------------------------------------
 set(projectName "ft-layout")
 
-set(AUX_CXX_FLAGS "-m32 -std=c++1y -O2 -g -Wall -Wextra -pthread -Wno-deprecated-register")
+set(AUX_CXX_FLAGS "-std=c++14 -O2 -g -Wall -Wextra -pedantic -pthread -Wno-deprecated-register -fcolor-diagnostics -Wno-gnu-anonymous-struct")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AUX_CXX_FLAGS}")
 
 
@@ -39,10 +39,12 @@ aux_source_directory("src" SRC)
 set(LIBS ${LIBS} "${OPENGL_LIBRARIES}")
 set(LIBS ${LIBS} "${GLEW_LIBRARY}")
 
-set(LIBS ${LIBS} "${CMAKE_SOURCE_DIR}/libs/glfw/lib/libglfw3.a")
+# set(LIBS ${LIBS} "${CMAKE_SOURCE_DIR}/libs/glfw/lib/libglfw3.a")
+set(LIBS ${LIBS} "/usr/lib/x86_64-linux-gnu/libglfw.so")
 set(LIBS ${LIBS} "Xi;Xrandr;Xcursor;Xxf86vm")
 
-set(LIBS ${LIBS} "${CMAKE_SOURCE_DIR}/libs/freetype/lib/libfreetype.a")
+# set(LIBS ${LIBS} "${CMAKE_SOURCE_DIR}/libs/freetype/lib/libfreetype.a")
+set(LIBS ${LIBS} "freetype")
 set(LIBS ${LIBS} "png;z")
 
 
