@@ -1,10 +1,18 @@
 #pragma once
 #include <cstdint>
 
-// Approx. optimized x86 code:
-// add %eax,%ebx
-// sbb %eax,%eax
-// or  %ebx,%eax
+// Expected optimized x86 Intel disassembly:
+// add     ecx, eax
+// sbb     eax, eax
+// or      eax, ecx
+
+// Typical optimized x86 Intel disassembly:
+// add     rax, rcx
+// mov     rcx, rax
+// shr     rcx, 32
+// neg     ecx
+// or      eax, ecx
+
 inline uint32_t saturate_add(uint32_t a, uint32_t b)
 {
 	int64_t s = (uint64_t)a + b;
@@ -21,4 +29,19 @@ inline uint8_t saturate_add(uint8_t a, uint8_t b)
 {
 	int32_t s = (uint32_t)a + b;
 	return -(s >> 8) | (uint8_t)s;
+}
+
+inline uint32_t saturate_add32(uint32_t a, uint32_t b)
+{
+	return saturate_add(a, b);
+}
+
+inline uint16_t saturate_add16(uint16_t a, uint16_t b)
+{
+	return saturate_add(a, b);
+}
+
+inline uint8_t saturate_add8(uint8_t a, uint8_t b)
+{
+	return saturate_add(a, b);
 }

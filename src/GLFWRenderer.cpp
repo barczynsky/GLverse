@@ -4,7 +4,6 @@
 
 #include "LazyText.h"
 
-using namespace std;
 
 GLFWRenderer::GLFWRenderer(int w, int h) : width { w }, height { h }
 {
@@ -29,7 +28,7 @@ bool GLFWRenderer::isRunning()
 void GLFWRenderer::sleepUntilNextFrame(int frame_count)
 {
 	next_frame += frame_count * frame_duration(1);
-	this_thread::sleep_until(next_frame);
+	std::this_thread::sleep_until(next_frame);
 }
 
 void drop_cb(GLFWwindow* window, int count, const char** names)
@@ -66,11 +65,11 @@ void GLFWRenderer::run()
 	glfwSetKeyCallback(window, key_cb);
 	glfwSetMouseButtonCallback(window, mouse_cb);
 
-	auto render_thread = thread([this]
+	auto render_thread = std::thread([this]
 	{
 		glfwMakeContextCurrent(window);
 
-		string text = "Lorem ipsum dolor sit amet,\n"
+		std::string text = "Lorem ipsum dolor sit amet,\n"
 			"consectetur adipisicing elit,\n"
 			"sed do eiusmod tempor incididunt\n"
 			"ut labore et dolore magna aliqua.";
@@ -94,6 +93,7 @@ void GLFWRenderer::run()
 		// t3.setColor(1, 0.5, 0.5);
 		// t3.setOpacity(80);
 		// t3.setSpacing(2);
+
 
 		while (!glfwWindowShouldClose(window))
 		{
