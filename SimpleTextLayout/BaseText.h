@@ -1,21 +1,29 @@
 #pragma once
-#include <algorithm>
 #include <cmath>
-#include <string>
+#include <algorithm>
+#include <codecvt>
+#include <locale>
+#include <mutex>
 #include <sstream>
+#include <string>
 #include <vector>
 #include "saturate_add"
 
-#include "BaseText.h"
 #include "FontRepository.h"
 #include "TexelVector.h"
 #include "TrueTypeFont.h"
 
-template<typename text_t = std::string>
+
+template <typename string_type = std::string>
 class BaseText
 {
+private:
+	std::recursive_mutex base_mutex;
+
 public:
-	typedef text_t StringType;
+	typedef string_type StringType;
+	typedef typename string_type::value_type StringValueType;
+	typedef std::basic_stringstream<typename string_type::value_type> StringStreamType;
 
 	union TextColor {
 		struct {
@@ -34,7 +42,7 @@ public:
 	enum class TextAlign {
 		Left = 0,
 		Center = 1,
-		Right = 2
+		Right = 2,
 	};
 
 protected:
@@ -52,6 +60,8 @@ protected:
 
 protected:
 	GLtexture texture{};
+
+protected:
 	FT_Vector text_border{ 0, 0 };
 	FT_Vector text_offset{ 0, 0 };
 
@@ -62,7 +72,7 @@ protected:
 	FT_Pos text_width{ 0 };
 	FT_Pos text_height{ 0 };
 	FT_Pos text_spacing{ 0 };
-	// FT_Pos text_interline{ 0 };
+	FT_Pos text_interline{ 0 };
 
 public:
 	// BaseText(){}
@@ -82,99 +92,125 @@ public:
 	}
 
 public:
-	std::shared_ptr<TrueTypeFont> getFont()
+	std::shared_ptr<TrueTypeFont> getFont() const
 	{
 		return font;
 	}
 
-	StringType getText()
+	StringType getText() const
 	{
 		return text;
 	}
 
-	TextOrigin getOrigin()
+	TextOrigin getOrigin() const
 	{
 		return text_origin;
 	}
 
-	TextAlign getAlign()
+	TextAlign getAlign() const
 	{
 		return text_align;
 	}
 
-	TextColor getColor()
+	TextColor getColor() const
 	{
 		return text_color;
 	}
 
-	float getOpacity()
+	float getOpacity() const
 	{
 		return text_color.a * 100.0f;
 	}
 
-	float getBaseline()
+	float getBaseline() const
 	{
 		return static_cast<float>(text_baseline / 64.0);
 	}
 
-	float getWidth()
+	float getWidth() const
 	{
 		return static_cast<float>(text_width / 64.0);
 	}
 
-	float getHeight()
+	float getHeight() const
 	{
 		return static_cast<float>(text_height / 64.0);
 	}
 
-	float getSize()
+	float getSize() const
 	{
 		return static_cast<float>(text_size / 64.0);
 	}
 
-	float getSpacing()
+	float getSpacing() const
 	{
 		return static_cast<float>(text_spacing / 64.0);
 	}
 
-	size_t getLineCount()
+	float getLineSpacing() const
+	{
+		return static_cast<float>(text_interline / 64.0);
+	}
+
+	size_t getLineCount() const
 	{
 		return text_lines.size();
 	}
 
-	size_t getWrapCount()
+	size_t getWrapCount() const
 	{
 		return text_lines.size() - 1;
 	}
 
+
 public:
 	virtual void setFont(std::shared_ptr<TrueTypeFont> new_font)
 	{
-		font = std::move(new_font);
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
+
+		font = new_font;
 		text_size = font->getFontHeight();
 		x_height = font->getXHeight();
 	}
 
 	virtual void setFont(std::string font_name, int font_size)
 	{
-		font = std::move(FontRepository::instance().getFont(font_name, font_size));
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
+
+		font = FontRepository::instance().getFont(font_name, font_size);
 		text_size = font->getFontHeight();
 		x_height = font->getXHeight();
 	}
 
 	virtual void setFontSize(int font_size)
 	{
-		setFont(font->getFontName(), font_size);
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
+
+		if (font)
+		{
+			setFont(font->getFontName(), font_size);
+		}
 	}
 
 	virtual void setText(StringType new_text)
 	{
-		text = std::move(new_text);
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
+
+		text = new_text;
 	}
 
 	virtual void setSpacing(float sp = 0.0f)
 	{
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
+
 		text_spacing = static_cast<FT_Pos>(std::floor(sp * 64.0));
+	}
+
+	virtual void setLineSpacing(float sp = 0.0f)
+	{
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
+
+		text_interline = static_cast<FT_Pos>(std::floor(sp * 64.0));
 	}
 
 	void setOrigin(float x, float y)
@@ -212,70 +248,70 @@ public:
 		text_color.b = b / 255.0f;
 	}
 
-	template<typename ColorType>
+	template <typename ColorType>
 	void setColor(ColorType color)
 	{
-		text_color.r = color.r;
-		text_color.g = color.g;
-		text_color.b = color.b;
+		text_color.r = color.r / 255.0f;
+		text_color.g = color.g / 255.0f;
+		text_color.b = color.b / 255.0f;
 	}
 
 public:
-	float measureString(StringType string)
+	virtual std::vector<StringType> getLines() const
 	{
-		FT_Pos string_width = 0;
-
-		typename StringType::value_type prev_c = 0;
-		for (auto c : string)
-		{
-			auto g = font->getGlyphSlot(c);
-			if (g == nullptr)
-				continue;
-
-			auto kerning = font->getFontKerning(prev_c, c);
-			string_width += g->advance.x + kerning.x + text_spacing;
-		}
-
-		return static_cast<float>(string_width / 64.0);
+		return text_lines;
 	}
 
-	float coneFunc(float x, float xoff, float yoff)
+	template <typename T>
+	decltype(auto) split(const std::basic_string<T>& s, const std::initializer_list<T> cs)
 	{
-		return std::abs(x - xoff) + yoff;
+		using pos_t = typename std::basic_string<T>::size_type;
+		std::basic_string<T> css{ cs.begin(), cs.end() };
+		std::vector<std::basic_string<T>> parts;
+		pos_t next{ 0 };
+		pos_t pos{ 0 };
+		do {
+			next = s.find_first_of(cs, pos);
+			parts.push_back(s.substr(pos, next - pos));
+			pos = next + 1;
+		} while (next != std::basic_string<T>::npos);
+		return parts;
 	}
 
-	void transformOrigin(int & x, int & y)
+	template <typename T>
+	decltype(auto) split(const std::basic_string<T>& s, const T c)
 	{
-		x += (text_width >> 6) * -text_origin.x;
-		y += (text_size >> 6) * (text_lines.size() - 1) * -text_origin.y;
-		y += (x_height >> 6) * -coneFunc(text_origin.y, 0.5f, -0.5f);
+		return split(s, { c });
 	}
 
-public:
 	virtual void splitText()
 	{
-		text_lines.clear();
-		std::istringstream ss(text);
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
 
-		while(!ss.eof())
-		{
-			text_lines.emplace_back();
-			std::getline(ss, text_lines.back());
-		}
+		text_lines.clear();
+		text_lines_w.clear();
+
+		StringValueType newline{ '\n' };
+		text_lines = split(text, newline);
 		text_lines_w.resize(text_lines.size());
 	}
 
 	virtual void measureText()
 	{
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
+
 		text_baseline = 0;
 		text_width = 0;
 		text_height = 0;
+
+		if (text_lines.empty())
+			return;
 
 		for (int i = 0; i < 1; i++)
 		{
 			FT_Pos line_width = 0;
 			FT_Pos max_ascent = 0;
-			typename StringType::value_type prev_c = 0;
+			StringValueType prev_c = 0;
 			for (auto c : text_lines[i])
 			{
 				auto g = font->getGlyphSlot(c);
@@ -294,7 +330,7 @@ public:
 		for (int i = 1; i < (int)text_lines.size() - 1; i++)
 		{
 			FT_Pos line_width = 0;
-			typename StringType::value_type prev_c = 0;
+			StringValueType prev_c = 0;
 			for (auto c : text_lines[i])
 			{
 				auto g = font->getGlyphSlot(c);
@@ -308,11 +344,12 @@ public:
 			text_lines_w[i] = line_width;
 		}
 		text_height += text_size * (text_lines.size() - 1);
+		text_height += text_interline * (text_lines.size() - 1);
 		for (int i = text_lines.size() - 1; i < (int)text_lines.size(); i++)
 		{
 			FT_Pos line_width = 0;
 			FT_Pos max_descent = 0;
-			typename StringType::value_type prev_c = 0;
+			StringValueType prev_c = 0;
 			for (auto c : text_lines[i])
 			{
 				auto g = font->getGlyphSlot(c);
@@ -329,15 +366,23 @@ public:
 		}
 	}
 
-	virtual void makeText()
+	virtual void prepareText()
 	{
-		if (font == nullptr)
-			return;
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
 
 		splitText();
 		measureText();
+	}
 
-		text_border.x = std::max(2L << 6, (text_size >> 3) >> 6 << 6);
+	virtual void makeText()
+	{
+		if (font == nullptr) return;
+
+		std::lock_guard<std::recursive_mutex> lck(base_mutex);
+
+		prepareText();
+
+		text_border.x = std::max<FT_Pos>(3 << 6, (text_size >> 3) >> 6 << 6);
 		text_border.y = text_border.x;
 		texture.tex_w = (text_width + text_border.x * 3) >> 6;
 		texture.tex_h = (text_height + text_border.y * 2) >> 6;
@@ -353,10 +398,10 @@ public:
 		FT_Pos current_baseline = text_baseline;
 		for (int i = 0; i < (int)text_lines.size(); i++)
 		{
-			auto & line = text_lines[i];
+			auto&& line = text_lines[i];
 
 			FT_Pos cursor = 0 - (font->getGlyphSlot(line.front())->metrics.horiBearingX >> 6);
-			typename StringType::value_type prev_c = 0;
+			StringValueType prev_c = 0;
 			for (auto c : line)
 			{
 				auto g = font->getGlyphSlot(c);
@@ -367,18 +412,19 @@ public:
 				cursor += kerning.x;
 				// if (kerning.x || kerning.y) fprintf(stderr, "kerning for '%lc' after '%lc' is (%ld,%ld)\n", prev_c, c, kerning.x, kerning.y);
 			#ifdef TARGET_LCD
-				int bitmap_width = g->bitmap.width / 3;
+				const int bitmap_width = g->bitmap.width / 3;
 			#else
-				int bitmap_width = g->bitmap.width;
+				const int bitmap_width = g->bitmap.width;
 			#endif
+				const int bitmap_height = g->bitmap.rows;
 				int xoff = (cursor + g->metrics.horiBearingX + text_border.x) >> 6;
-				xoff += ((text_width - text_lines_w[i]) >> 6) * (float)text_align / 2.0f;
+				xoff += (int)(((text_width - text_lines_w[i]) >> 6) * (float)text_align / 2.0f);
 				int yoff = (current_baseline - g->metrics.horiBearingY + text_border.y) >> 6;
-				for (int y = 0; y < g->bitmap.rows; y++)
+				for (int y = 0; y < bitmap_height; y++)
 				{
 					for (int x = 0; x < bitmap_width; x++)
 					{
-						auto & texel = buffer.at(xoff + x, yoff + y);
+						auto&& texel = buffer.at(xoff + x, yoff + y);
 					#ifdef TARGET_LCD
 						const int idx = g->bitmap.pitch * y + x * 3;
 						texel.r = saturate_add(texel.r, g->bitmap.buffer[idx + 0]);
@@ -400,6 +446,7 @@ public:
 				prev_c = c;
 			}
 			current_baseline += text_size;
+			current_baseline += text_interline;
 		}
 
 		glDeleteTextures(1, &texture.tex_id);
@@ -410,6 +457,38 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texture.tex_w, texture.tex_h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (uint8_t*)buffer.data());
+	}
+
+public:
+	float measureString(StringType string)
+	{
+		FT_Pos string_width = 0;
+
+		StringValueType prev_c = 0;
+		for (auto c : string)
+		{
+			auto g = font->getGlyphSlot(c);
+			if (g == nullptr)
+				continue;
+
+			auto kerning = font->getFontKerning(prev_c, c);
+			string_width += g->advance.x + kerning.x + text_spacing;
+		}
+
+		return static_cast<float>(string_width / 64.0);
+	}
+
+public:
+	float transition(float x, float xoff, float yoff)
+	{
+		return std::abs(x - xoff) + yoff;
+	}
+
+	void transformOrigin(int & x, int & y)
+	{
+		x += (int)((text_width >> 6) * -text_origin.x);
+		y += (int)((text_size >> 6) * (text_lines.size() - 1) * -text_origin.y);
+		y += (int)((x_height >> 6) * -transition(text_origin.y, 0.5f, -0.5f));
 	}
 
 public:
@@ -498,6 +577,42 @@ public:
 			glVertex2f(x, y - r);
 			glVertex2f(x, y + r);
 		glEnd();
+	}
+
+public:
+	static std::u32string u8_to_u32(std::string s)
+	{
+		return std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>{}.from_bytes(s);
+	}
+
+	static std::u32string u16_to_u32(std::u16string u16s)
+	{
+		return u8_to_u32(std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(u16s));
+	}
+
+	static std::u32string ws_to_u32(std::wstring ws)
+	{
+		return u8_to_u32(std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}.to_bytes(ws));
+	}
+
+	static std::u32string s_to_u32(std::string s)
+	{
+		return u8_to_u32(s);
+	}
+
+	static std::u32string to_u32string(std::string s)
+	{
+		return u8_to_u32(s);
+	}
+
+	static std::u32string to_u32string(std::u16string s)
+	{
+		return u16_to_u32(s);
+	}
+
+	static std::u32string to_u32string(std::wstring s)
+	{
+		return ws_to_u32(s);
 	}
 
 };
