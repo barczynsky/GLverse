@@ -20,5 +20,6 @@
 *.out
 *.app
 
+# Custom
 build/
-ft-layout.sublime-workspace
+*.sublime-workspace

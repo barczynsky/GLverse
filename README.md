@@ -1,39 +1,52 @@
-# ft-layout
+# GLverse
 
 ## What's that?
 
-ft-layout is a very efficient yet very simple text layout library with interface based on FreeType and demo code based on GLFW.
+GLverse is small and simple, but also aims to be an efficient **raster** text (font) rendering library with backend based on FreeType/OpenGL and a demo app based on GLFW.
 
-Current version: 0.2
+Current version: 0.5
 
 ## Compiling
 
-ft-layout should compile under either Linux/Windows/Mac, given using gcc or clang (and other C++ compilers).
+GLverse should compile (**compile**, not necessarily **link**) well on either Linux/Windows/macOS, preferably using LLVM Clang. Minimum supported language version is C++14 due to various handy constructs being used (make_unique, decltype(auto), generic and improved lambdas, etc.).
 
-Recommended C++ standard used when compiling is C++14. Some minor elements of it are in use, but it still will fail in case the compiler doesn't support high enough standard extensions.
+NOTE: You may encounter linkage problems on platforms other than Linux (Debian/Arch).
+
+Usual compilation procedure on Linux using **ninja**:
+```bash
+$ git clone https://github.com/barczynsky/GLverse.git
+$ cd GLverse
+$ mkdir build
+$ cd build
+$ cmake -GNinja ..
+$ ninja
+$ ./demo.GLverse
+```
+
+With this you will build a static GLverse library and a simple visual demo, usually presenting recently added features.
 
 ## Dependencies
 
-- OpenGL 3.2 with support for extensions (GLEW, etc.)
-- FreeType 2.5+ (compiled with LCD filtering if necessary)
-- GLFW 3.0 (or even 3.1)
+- CMake 3.1 (build only)
+- OpenGL 3.3 (demo still uses compatibility context)
+- GLEW 2.0 (will be replaced by gl3w, after core context transition)
+- FreeType 2.6
+- GLFW 3.2
+- X11 (Linux only)
 - stuff, that I don't remember.
 
 ## Features
 
-- Lazy Text Rendering (render new text only when text was modified prior to the next frame)
-- easy Font/Glyph metrics access (support for TrueType/OpenType)
-- TrueType [kerning](http://en.wikipedia.org/wiki/Kerning) (from kern tables)
-- LCD Subpixel rendering (disabled by default)
-- origin drawing stabilisation
-- Font Repository for caching rendered glyph bitmaps and OpenGL textures
-- Saturated Addition (saturated_add) math needed for in-place glyph blending during text layout
-- Texel Vector container serving as one or two dimensional buffer (random access)
-- well suited for multithreaded processing (main thread for handling events, worker drawing threads, etc.)
-- demo code is using [DejaVu Fonts](http://dejavu-fonts.org) now (previously using faces from [Google Fonts](https://www.google.com/fonts))
+- Lazy Text Rendering (create new texture only when the text was modified)
+- Font [kerning](http://en.wikipedia.org/wiki/Kerning) (from kern tables)
+- Font and glyph metrics (for TrueType and OpenType faces)
+- Saturated addition math (saturate_add) needed for in-place glyph bitmap blending
+- Text layout control, such as text wrap or alignment
+- Texel container serving as either one or two dimensional texture buffer
+- Font repository, also used for caching rendered glyphs
+- Ready for multithreaded pipeline by extensive use of mutexes
+- Demo code is now using [Noto Fonts](https://www.google.com/get/noto)
 
 ## TODO
 
-- Hyper Text Rendering (renders glyphs separately, measuring every change)
-- automatic text line breaking for set width
-- selective drawing similar to OpenGL's viewport
+- Restrict texture drawing area, probably by using OpenGL scissor test

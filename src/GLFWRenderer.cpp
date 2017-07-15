@@ -1,7 +1,6 @@
+#include "GLFWRenderer.h"
 #include <cmath>
 #include <thread>
-#include "GLFWRenderer.h"
-
 #include "LazyText.h"
 
 
@@ -75,20 +74,20 @@ void GLFWRenderer::run()
 			"ut labore et dolore magna aliqua.";
 		int size = 48;
 
-		LazyText t1("DejaVuSans", size);
+		LazyText t1("NotoSans-Regular", size);
 		t1.setText(text);
 		// t1.setAlign(LazyText::TextAlign::Center);
 		// t1.setColor(1, 0.5, 0);
 		// t1.setOpacity(90);
 		// t1.setSpacing(2);
 
-		LazyText t2("DejaVuSerif", size);
+		LazyText t2("NotoSerif-Regular", size);
 		t2.setText(text);
 		// t2.setColor(0.5, 1, 1);
 		// t2.setOpacity(60);
 		// t2.setSpacing(2);
 
-		LazyText t3("DejaVuSansMono", size);
+		LazyText t3("NotoMono-Regular", size);
 		t3.setText(text);
 		// t3.setColor(1, 0.5, 0.5);
 		// t3.setOpacity(80);
