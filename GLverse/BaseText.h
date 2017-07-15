@@ -12,9 +12,10 @@
 #include "FontRepository.h"
 #include "TexelVector.h"
 #include "TrueTypeFont.h"
+#include "BaseTextRendererGL2.h"
 
 
-template <typename string_type = std::string>
+template <typename string_type = std::string, typename renderer_type = BaseTextRendererGL2>
 class BaseText
 {
 private:
@@ -307,7 +308,7 @@ public:
 		if (text_lines.empty())
 			return;
 
-		for (int i = 0; i < 1; i++)
+		for (size_t i = 0; i < 1; ++i)
 		{
 			FT_Pos line_width = 0;
 			FT_Pos max_ascent = 0;
@@ -327,7 +328,7 @@ public:
 			text_height += max_ascent;
 			text_lines_w[i] = line_width;
 		}
-		for (int i = 1; i < (int)text_lines.size() - 1; i++)
+		for (size_t i = 1; i < text_lines.size() - 1; ++i)
 		{
 			FT_Pos line_width = 0;
 			StringValueType prev_c = 0;
@@ -345,7 +346,7 @@ public:
 		}
 		text_height += text_size * (text_lines.size() - 1);
 		text_height += text_interline * (text_lines.size() - 1);
-		for (int i = text_lines.size() - 1; i < (int)text_lines.size(); i++)
+		for (size_t i = text_lines.size() - 1; i < text_lines.size(); ++i)
 		{
 			FT_Pos line_width = 0;
 			FT_Pos max_descent = 0;
@@ -386,8 +387,8 @@ public:
 		text_border.y = text_border.x;
 		texture.tex_w = (text_width + text_border.x * 3) >> 6;
 		texture.tex_h = (text_height + text_border.y * 2) >> 6;
-		texture.tex_w = 2 << (int)std::log2(texture.tex_w);
-		texture.tex_h = 2 << (int)std::log2(texture.tex_h);
+		texture.tex_w = 2 << static_cast<int>(std::log2(texture.tex_w));
+		texture.tex_h = 2 << static_cast<int>(std::log2(texture.tex_h));
 		text_offset.x = 0 - ((text_border.x) >> 6 << 6);
 		text_offset.y = 0 - ((text_border.y + text_baseline) >> 6 << 6);
 		// fprintf(stderr, "Text: '%s'\n", text.c_str());
@@ -396,7 +397,7 @@ public:
 
 		TexelVector buffer(texture.tex_w, texture.tex_h, { 0, 0, 0, 0 });
 		FT_Pos current_baseline = text_baseline;
-		for (int i = 0; i < (int)text_lines.size(); i++)
+		for (size_t i = 0; i < text_lines.size(); ++i)
 		{
 			auto&& line = text_lines[i];
 
@@ -411,34 +412,20 @@ public:
 				auto kerning = font->getFontKerning(prev_c, c);
 				cursor += kerning.x;
 				// if (kerning.x || kerning.y) fprintf(stderr, "kerning for '%lc' after '%lc' is (%ld,%ld)\n", prev_c, c, kerning.x, kerning.y);
-			#ifdef TARGET_LCD
-				const int bitmap_width = g->bitmap.width / 3;
-			#else
-				const int bitmap_width = g->bitmap.width;
-			#endif
-				const int bitmap_height = g->bitmap.rows;
 				int xoff = (cursor + g->metrics.horiBearingX + text_border.x) >> 6;
-				xoff += (int)(((text_width - text_lines_w[i]) >> 6) * (float)text_align / 2.0f);
+				xoff += static_cast<int>(((text_width - text_lines_w[i]) >> 6) * static_cast<float>(text_align) / 2.0f);
 				int yoff = (current_baseline - g->metrics.horiBearingY + text_border.y) >> 6;
-				for (int y = 0; y < bitmap_height; y++)
+				for (size_t y = 0; y < g->bitmap.rows; y++)
 				{
-					for (int x = 0; x < bitmap_width; x++)
+					for (size_t x = 0; x < g->bitmap.width; x++)
 					{
 						auto&& texel = buffer.at(xoff + x, yoff + y);
-					#ifdef TARGET_LCD
-						const int idx = g->bitmap.pitch * y + x * 3;
-						texel.r = saturate_add(texel.r, g->bitmap.buffer[idx + 0]);
-						texel.g = saturate_add(texel.g, g->bitmap.buffer[idx + 1]);
-						texel.b = saturate_add(texel.b, g->bitmap.buffer[idx + 2]);
-						texel.a = std::max({ texel.r, texel.g, texel.b });
-					#else
 						texel.r = 255;
 						texel.g = 255;
 						texel.b = 255;
 						texel.a = saturate_add(texel.a, g->bitmap.buffer[g->bitmap.pitch * y + x]);
 					#ifdef GLYPH_SHADOWS
 						texel.a = saturate_add(texel.a, GLYPH_SHADOWS);
-					#endif
 					#endif
 					}
 				}
@@ -456,16 +443,16 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texture.tex_w, texture.tex_h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (uint8_t*)buffer.data());
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texture.tex_w, texture.tex_h, 0, GL_BGRA, GL_UNSIGNED_BYTE, buffer.data());
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 public:
-	float measureString(StringType string)
+	float measureString(StringType s)
 	{
 		FT_Pos string_width = 0;
-
 		StringValueType prev_c = 0;
-		for (auto c : string)
+		for (auto c : s)
 		{
 			auto g = font->getGlyphSlot(c);
 			if (g == nullptr)
@@ -474,7 +461,6 @@ public:
 			auto kerning = font->getFontKerning(prev_c, c);
 			string_width += g->advance.x + kerning.x + text_spacing;
 		}
-
 		return static_cast<float>(string_width / 64.0);
 	}
 
@@ -486,9 +472,9 @@ public:
 
 	void transformOrigin(int & x, int & y)
 	{
-		x += (int)((text_width >> 6) * -text_origin.x);
-		y += (int)((text_size >> 6) * (text_lines.size() - 1) * -text_origin.y);
-		y += (int)((x_height >> 6) * -transition(text_origin.y, 0.5f, -0.5f));
+		x += static_cast<int>((text_width >> 6) * -text_origin.x);
+		y += static_cast<int>((text_size >> 6) * (text_lines.size() - 1) * -text_origin.y);
+		y += static_cast<int>((x_height >> 6) * -transition(text_origin.y, 0.5f, -0.5f));
 	}
 
 public:
@@ -506,26 +492,9 @@ public:
 		int h = texture.tex_h;
 		x += text_offset.x >> 6;
 		y += text_offset.y >> 6;
-
 		transformOrigin(x, y);
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, texture.tex_id);
-		glColor4fv(text_color);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2f(x, y);
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex2f(x + w, y);
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex2f(x + w, y + h);
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2f(x, y + h);
-		glEnd();
-		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_BLEND);
+		auto c = text_color;
+		renderer_type::drawTexture(texture.tex_id, { x, y, w, h }, { c.r, c.g, c.b, c.a });
 	}
 
 	void drawBounds(int x, int y)
@@ -534,49 +503,25 @@ public:
 		int h = texture.tex_h;
 		x += text_offset.x >> 6;
 		y += text_offset.y >> 6;
-
 		transformOrigin(x, y);
-
-		glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
-		glLineWidth(1);
-		glBegin(GL_LINE_LOOP);
-			glVertex2f(x, y);
-			glVertex2f(x + w, y);
-			glVertex2f(x + w, y + h);
-			glVertex2f(x, y + h);
-		glEnd();
+		renderer_type::drawRect({ x, y, w, h }, { 0, 1, 0, 1 });
 	}
 
 	void drawBaseline(int x, int y)
 	{
 		transformOrigin(x, y);
-
 		for (int i = 0; i < (int)text_lines.size(); ++i)
 		{
 			int s = text_size >> 6;
 			int w = text_width >> 6;
-
-			glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
-			glLineWidth(1);
-			glBegin(GL_LINES);
-				glVertex2f(x, y + s * i);
-				glVertex2f(x + w, y + s * i);
-			glEnd();
+			renderer_type::drawLine({ x, y + s * i }, { x + w, y + s * i }, { 1, 0, 0, 1 });
 		}
 	}
 
 	void drawOrigin(int x, int y)
 	{
 		int r = 10;
-
-		glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
-		glLineWidth(1);
-		glBegin(GL_LINES);
-			glVertex2f(x - r, y);
-			glVertex2f(x + r, y);
-			glVertex2f(x, y - r);
-			glVertex2f(x, y + r);
-		glEnd();
+		renderer_type::drawCrosshair({ x, y }, r, { 0.5f, 0.5f, 0.5f, 1.0f });
 	}
 
 public:
