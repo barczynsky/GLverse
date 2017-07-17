@@ -46,6 +46,5 @@ std::shared_ptr<TrueTypeFont> FontRepository::getFont(std::string font_name, siz
 		}
 	}
 
-	// fprintf(stderr, "missing font: %s(.ttf|.ttc|.otf)\n", font_name.c_str());
 	throw std::runtime_error("missing font: "s + font_name + "(.ttf|.ttc|.otf)\n"s);
 }

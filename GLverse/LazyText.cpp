@@ -126,10 +126,12 @@ LazyText::StringType LazyText::fitText(LazyText::StringType text)
 	using pos_t = typename std::basic_string<StringValueType>::size_type;
 	StringValueType newline{ '\n' };
 	StringValueType whitespace{ ' ' }; //TODO: no-break space (0x00A0) / CJK ideographic space (0x3000)
-	auto words = BaseText::split(text, { whitespace, newline });
+	// auto words = BaseText::split(text, { whitespace, newline });
+	auto words = BaseText::split(text, { whitespace });
 
 	auto it = text.begin();
-	std::unordered_set<StringValueType> separator{ newline, whitespace };
+	// std::unordered_set<StringValueType> separator{ whitespace, newline };
+	std::unordered_set<StringValueType> separator{ whitespace };
 	std::vector<pos_t> separator_index;
 
 	for (size_t i = 0; i < text.size(); ++i)
@@ -137,10 +139,6 @@ LazyText::StringType LazyText::fitText(LazyText::StringType text)
 		if (separator.count(text[i]) == 1)
 		{
 			separator_index.push_back(i);
-			if (text[i] == newline)
-			{
-				text[i] = whitespace;
-			}
 		}
 	}
 
@@ -155,7 +153,14 @@ LazyText::StringType LazyText::fitText(LazyText::StringType text)
 
 		if (BaseText::measureString({ p_it, sep_it }) > max_line_length)
 		{
-			*pre_it = newline;
+			if (*pre_it == newline)
+			{
+				*sep_it = newline;
+			}
+			else
+			{
+				*pre_it = newline;
+			}
 			p = sep_p + 1;
 		}
 	}
