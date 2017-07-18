@@ -545,6 +545,26 @@ public:
 		return u8_to_u32(s);
 	}
 
+	static std::string u32_to_u8(std::u32string u32s)
+	{
+		return std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>{}.to_bytes(u32s);
+	}
+
+	static std::u16string u32_to_u16(std::u32string u32s)
+	{
+		return std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.from_bytes(u32_to_u8(u32s));
+	}
+
+	static std::wstring u32_to_ws(std::u32string u32s)
+	{
+		return std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}.from_bytes(u32_to_u8(u32s));
+	}
+
+	static std::string u32_to_s(std::u32string u32s)
+	{
+		return u32_to_u8(u32s);
+	}
+
 	static std::u32string to_u32string(std::string s)
 	{
 		return u8_to_u32(s);
